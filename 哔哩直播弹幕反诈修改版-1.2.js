@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         哔哩哔哩直播弹幕反诈修改版
-// @version      1.1
-// @description  发不出去弹幕时不会假装发出去, 弹幕列表和播放器上不会出现没发出去的弹幕, 且会弹出高亮弹幕提示被什么诈骗
+// @version      1.2
+// @description  本脚本会提示你在直播间发送的弹幕被什么秒删，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       cheeys
 // @icon         https://www.bilibili.com/favicon.ico
 // @license      GPL 3.0
