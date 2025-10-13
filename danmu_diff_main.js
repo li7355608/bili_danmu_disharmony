@@ -124,7 +124,14 @@
                             try {
                                 const extraData = JSON.parse(data.data.mode_info.extra);
                                 if (extraData.content) {
-                                    console.log("弹幕内容:", extraData.content);
+                                    // 根据屏蔽类型进行针对性输出
+                                    if (data.msg === "f") {
+                                        console.log("系统屏蔽弹幕:", extraData.content);
+                                    } else if (data.msg === "k") {
+                                        console.log("主播屏蔽弹幕:", extraData.content);
+                                    } else {
+                                        console.log("正常弹幕:", extraData.content);
+                                    }
                                 }
                             } catch (e) {
                                 console.log("解析弹幕内容失败:", e);
