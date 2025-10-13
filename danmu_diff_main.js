@@ -119,6 +119,18 @@
             return new Promise((resolve, reject) => {
                 originFetchBLDMAF(...arg).then(r => {
                     r.json().then(data => {
+                        // 在修改数据前提取弹幕内容
+                        if (data.data && data.data.mode_info && data.data.mode_info.extra) {
+                            try {
+                                const extraData = JSON.parse(data.data.mode_info.extra);
+                                if (extraData.content) {
+                                    console.log("弹幕内容:", extraData.content);
+                                }
+                            } catch (e) {
+                                console.log("解析弹幕内容失败:", e);
+                            }
+                        }
+                        
                         if (data.code === 0 && data.msg === "f") {
                             for(let i = 0; i< exp; i++){
                                 showFloatingMessage(ban_system_msg, ban_color_system);
