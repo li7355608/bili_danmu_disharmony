@@ -102,6 +102,19 @@
             cursor: pointer;
         `;
 
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = '保存';
+        saveBtn.style.cssText = `
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 8px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 5px;
+        `;
+
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '×';
         closeBtn.style.cssText = `
@@ -117,6 +130,7 @@
 
         titleBar.appendChild(title);
         titleBar.appendChild(clearBtn);
+        titleBar.appendChild(saveBtn);
         titleBar.appendChild(closeBtn);
 
         // 添加内容区域
@@ -135,6 +149,10 @@
         // 绑定事件
         clearBtn.onclick = () => {
             contentArea.innerHTML = '';
+        };
+
+        saveBtn.onclick = () => {
+            saveDanmuLogs(contentArea);
         };
 
         closeBtn.onclick = () => {
@@ -183,6 +201,77 @@
         }
 
         return logBox;
+    }
+
+    // 保存弹幕记录到文件
+    function saveDanmuLogs(contentArea) {
+        const entries = contentArea.children;
+        if (entries.length === 0) {
+            alert('没有弹幕记录可保存！');
+            return;
+        }
+
+        let saveContent = '弹幕记录保存文件\n';
+        saveContent += '='.repeat(50) + '\n';
+        saveContent += `保存时间: ${new Date().toLocaleString()}\n`;
+        saveContent += `记录总数: ${entries.length} 条\n`;
+        saveContent += '='.repeat(50) + '\n\n';
+
+        // 统计信息
+        let systemCount = 0;
+        let userCount = 0;
+        let normalCount = 0;
+
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+            const typeDiv = entry.querySelector('div:nth-child(2)');
+            const contentDiv = entry.querySelector('div:nth-child(3)');
+            const timeDiv = entry.querySelector('div:nth-child(1)');
+            
+            if (typeDiv && contentDiv && timeDiv) {
+                const type = typeDiv.textContent;
+                const content = contentDiv.textContent;
+                const time = timeDiv.textContent;
+                
+                // 统计数量
+                if (type.includes('系统屏蔽')) systemCount++;
+                else if (type.includes('主播屏蔽')) userCount++;
+                else if (type.includes('正常显示')) normalCount++;
+                
+                saveContent += `[${time}] ${type}\n`;
+                saveContent += `内容: ${content}\n`;
+                saveContent += '-'.repeat(30) + '\n';
+            }
+        }
+
+        // 添加统计信息
+        saveContent += '\n' + '='.repeat(50) + '\n';
+        saveContent += '统计信息:\n';
+        saveContent += `系统屏蔽: ${systemCount} 条\n`;
+        saveContent += `主播屏蔽: ${userCount} 条\n`;
+        saveContent += `正常显示: ${normalCount} 条\n`;
+        saveContent += `总计: ${entries.length} 条\n`;
+        saveContent += '='.repeat(50) + '\n';
+
+        // 创建下载链接
+        const blob = new Blob([saveContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `弹幕记录_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // 显示保存成功提示
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '已保存';
+        saveBtn.style.background = '#2196F3';
+        setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.style.background = '#4CAF50';
+        }, 2000);
     }
 
     // 记录弹幕到文本框
