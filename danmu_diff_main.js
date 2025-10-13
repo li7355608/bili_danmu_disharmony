@@ -71,7 +71,7 @@
             font-size: 12px;
             z-index: 10000;
             font-family: 'Microsoft YaHei', sans-serif;
-            overflow-y: auto;
+            overflow: hidden;
             resize: both;
         `;
 
