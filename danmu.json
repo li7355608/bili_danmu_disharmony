@@ -1,0 +1,45 @@
+[
+  {
+    "code": 0,
+    "data": {
+      "mode_info": {
+        "mode": 0,
+        "show_player_type": 0,
+        "extra": "{\"send_from_me\":true,\"master_player_hidden\":false,\"mode\":0,\"color\":77546497,\"dm_type\":0,\"font_size\":25,\"player_mode\":1,\"show_player_type\":0,\"content\":\"我是正常弹幕\",\"user_hash\":\"6666666666\",\"emoticon_unique\":\"\",\"bulge_display\":0,\"recommend_score\":1,\"main_state_dm_color\":\"\",\"objective_state_dm_color\":\"\",\"direction\":0,\"pk_direction\":0,\"quartet_direction\":0,\"anniversary_crowd\":0,\"yeah_space_type\":\"\",\"yeah_space_url\":\"\",\"jump_to_url\":\"\",\"space_type\":\"\",\"space_url\":\"\",\"animation\":{},\"emots\":null,\"is_audited\":false,\"id_str\":\"5465754edfggw8r2f4tg8w41g5g4wg1g5wg4\",\"icon\":null,\"show_reply\":true,\"reply_mid\":0,\"reply_uname\":\"\",\"reply_uname_color\":\"\",\"reply_is_mystery\":false,\"reply_type_enum\":0,\"hit_combo\":0,\"esports_jump_url\":\"\",\"is_mirror\":false,\"is_collaboration_member\":false}",
+        "user": {}
+      },
+      "dm_v2": null
+    },
+    "message": "",
+    "msg": ""
+  },
+  {
+    "code": 0,
+    "data": {
+      "mode_info": {
+        "mode": 0,
+        "show_player_type": 0,
+        "extra": "{\"send_from_me\":true,\"master_player_hidden\":false,\"mode\":0,\"color\":77546497,\"dm_type\":0,\"font_size\":25,\"player_mode\":1,\"show_player_type\":0,\"content\":\"我被系统删除了\",\"user_hash\":\"6666666666\",\"emoticon_unique\":\"\",\"bulge_display\":0,\"recommend_score\":1,\"main_state_dm_color\":\"\",\"objective_state_dm_color\":\"\",\"direction\":0,\"pk_direction\":0,\"quartet_direction\":0,\"anniversary_crowd\":0,\"yeah_space_type\":\"\",\"yeah_space_url\":\"\",\"jump_to_url\":\"\",\"space_type\":\"\",\"space_url\":\"\",\"animation\":{},\"emots\":null,\"is_audited\":false,\"id_str\":\"5465754edfggw8r2f4tg8w41g5g4wg1g5wg4\",\"icon\":null,\"show_reply\":true,\"reply_mid\":0,\"reply_uname\":\"\",\"reply_uname_color\":\"\",\"reply_is_mystery\":false,\"reply_type_enum\":0,\"hit_combo\":0,\"esports_jump_url\":\"\",\"is_mirror\":false,\"is_collaboration_member\":false}",
+        "user": {}
+      },
+      "dm_v2": null
+    },
+    "message": "f",
+    "msg": "f"
+  },
+  {
+    "code": 0,
+    "data": {
+      "mode_info": {
+        "mode": 0,
+        "show_player_type": 0,
+        "extra": "{\"send_from_me\":true,\"master_player_hidden\":false,\"mode\":0,\"color\":77546497,\"dm_type\":0,\"font_size\":25,\"player_mode\":1,\"show_player_type\":0,\"content\":\"我被主播删除了\",\"user_hash\":\"6666666666\",\"emoticon_unique\":\"\",\"bulge_display\":0,\"recommend_score\":7,\"main_state_dm_color\":\"\",\"objective_state_dm_color\":\"\",\"direction\":0,\"pk_direction\":0,\"quartet_direction\":0,\"anniversary_crowd\":0,\"yeah_space_type\":\"\",\"yeah_space_url\":\"\",\"jump_to_url\":\"\",\"space_type\":\"\",\"space_url\":\"\",\"animation\":{},\"emots\":null,\"is_audited\":false,\"id_str\":\"5465754edfggw8r2f4tg8w41g5g4wg1g5wg4\",\"icon\":null,\"show_reply\":true,\"reply_mid\":0,\"reply_uname\":\"\",\"reply_uname_color\":\"\",\"reply_is_mystery\":false,\"reply_type_enum\":0,\"hit_combo\":0,\"esports_jump_url\":\"\",\"is_mirror\":false,\"is_collaboration_member\":false}",
+        "user": {}
+      },
+      "dm_v2": null
+    },
+    "message": "k",
+    "msg": "k"
+  }
+]
+

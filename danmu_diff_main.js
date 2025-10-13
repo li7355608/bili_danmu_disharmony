@@ -53,6 +53,262 @@
     const error_msg = "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)"
     const error_send_msg = "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
 
+    // 创建浮动文本框用于记录被拦截的弹幕
+    function createDanmuLogBox() {
+        const logBox = document.createElement('div');
+        logBox.id = 'danmu-log-box';
+        logBox.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: 2px solid #00a1d6;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 10000;
+            font-family: 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            resize: both;
+        `;
+
+        // 添加标题栏
+        const titleBar = document.createElement('div');
+        titleBar.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #00a1d6;
+        `;
+
+        const title = document.createElement('span');
+        title.textContent = '弹幕记录板';
+        title.style.fontWeight = 'bold';
+
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = '清空';
+        clearBtn.style.cssText = `
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 8px;
+            font-size: 10px;
+            cursor: pointer;
+        `;
+
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = '保存';
+        saveBtn.style.cssText = `
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 8px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 5px;
+        `;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = `
+            background: #666;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 5px;
+        `;
+
+        titleBar.appendChild(title);
+        titleBar.appendChild(clearBtn);
+        titleBar.appendChild(saveBtn);
+        titleBar.appendChild(closeBtn);
+
+        // 添加内容区域
+        const contentArea = document.createElement('div');
+        contentArea.id = 'danmu-log-content';
+        contentArea.style.cssText = `
+            height: calc(100% - 30px);
+            overflow-y: auto;
+            word-wrap: break-word;
+        `;
+
+        logBox.appendChild(titleBar);
+        logBox.appendChild(contentArea);
+        document.body.appendChild(logBox);
+
+        // 绑定事件
+        clearBtn.onclick = () => {
+            contentArea.innerHTML = '';
+        };
+
+        saveBtn.onclick = () => {
+            saveDanmuLogs(contentArea, saveBtn);
+        };
+
+        closeBtn.onclick = () => {
+            logBox.style.display = 'none';
+        };
+
+        // 添加拖拽功能
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        titleBar.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+
+            if (e.target === titleBar || titleBar.contains(e.target)) {
+                isDragging = true;
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                logBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+            }
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+
+        return logBox;
+    }
+
+    // 保存弹幕记录到文件
+    function saveDanmuLogs(contentArea, saveBtn) {
+        const entries = contentArea.children;
+        if (entries.length === 0) {
+            alert('没有弹幕记录可保存！');
+            return;
+        }
+
+        let saveContent = '弹幕记录保存文件\n';
+        saveContent += '='.repeat(50) + '\n';
+        saveContent += `保存时间: ${new Date().toLocaleString()}\n`;
+        saveContent += `记录总数: ${entries.length} 条\n`;
+        saveContent += '='.repeat(50) + '\n\n';
+
+        // 统计信息
+        let systemCount = 0;
+        let userCount = 0;
+        let normalCount = 0;
+
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+            const typeDiv = entry.querySelector('div:nth-child(2)');
+            const contentDiv = entry.querySelector('div:nth-child(3)');
+            const timeDiv = entry.querySelector('div:nth-child(1)');
+            
+            if (typeDiv && contentDiv && timeDiv) {
+                const type = typeDiv.textContent;
+                const content = contentDiv.textContent;
+                const time = timeDiv.textContent;
+                
+                // 统计数量
+                if (type.includes('系统屏蔽')) systemCount++;
+                else if (type.includes('主播屏蔽')) userCount++;
+                else if (type.includes('正常显示')) normalCount++;
+                
+                saveContent += `[${time}] ${type}\n`;
+                saveContent += `内容: ${content}\n`;
+                saveContent += '-'.repeat(30) + '\n';
+            }
+        }
+
+        // 添加统计信息
+        saveContent += '\n' + '='.repeat(50) + '\n';
+        saveContent += '统计信息:\n';
+        saveContent += `系统屏蔽: ${systemCount} 条\n`;
+        saveContent += `主播屏蔽: ${userCount} 条\n`;
+        saveContent += `正常显示: ${normalCount} 条\n`;
+        saveContent += `总计: ${entries.length} 条\n`;
+        saveContent += '='.repeat(50) + '\n';
+
+        // 创建下载链接
+        const blob = new Blob([saveContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `弹幕记录_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // 显示保存成功提示
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '已保存';
+        saveBtn.style.background = '#2196F3';
+        setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.style.background = '#4CAF50';
+        }, 2000);
+    }
+
+    // 记录弹幕到文本框
+    function logDanmuToBox(content, type) {
+        let logBox = document.getElementById('danmu-log-box');
+        if (!logBox) {
+            logBox = createDanmuLogBox();
+        }
+
+        const contentArea = document.getElementById('danmu-log-content');
+        const timestamp = new Date().toLocaleTimeString();
+        const typeText = type === 'system' ? '系统屏蔽' : type === 'user' ? '主播屏蔽' : '正常显示';
+        const typeColor = type === 'system' ? '#ff6b6b' : type === 'user' ? '#ffa500' : '#00ff00';
+
+        const logEntry = document.createElement('div');
+        logEntry.style.cssText = `
+            margin-bottom: 5px;
+            padding: 3px;
+            border-left: 3px solid ${typeColor};
+            background: rgba(255, 255, 255, 0.1);
+        `;
+        logEntry.innerHTML = `
+            <div style="font-size: 10px; color: #ccc;">${timestamp}</div>
+            <div style="color: ${typeColor}; font-weight: bold;">[${typeText}]</div>
+            <div>${content}</div>
+        `;
+
+        contentArea.appendChild(logEntry);
+        contentArea.scrollTop = contentArea.scrollHeight;
+
+        // 限制记录数量，避免占用过多内存
+        const entries = contentArea.children;
+        if (entries.length > 50) {
+            contentArea.removeChild(entries[0]);
+        }
+    }
+
 
     let windowCtx = self.window;
     if (self.unsafeWindow) {
@@ -119,6 +375,28 @@
             return new Promise((resolve, reject) => {
                 originFetchBLDMAF(...arg).then(r => {
                     r.json().then(data => {
+                        // 在修改数据前提取弹幕内容
+                        if (data.data && data.data.mode_info && data.data.mode_info.extra) {
+                            try {
+                                const extraData = JSON.parse(data.data.mode_info.extra);
+                                if (extraData.content) {
+                                    // 根据屏蔽类型进行针对性输出
+                                    if (data.msg === "f") {
+                                        console.log("系统屏蔽弹幕:", extraData.content);
+                                        logDanmuToBox(extraData.content, 'system');
+                                    } else if (data.msg === "k") {
+                                        console.log("主播屏蔽弹幕:", extraData.content);
+                                        logDanmuToBox(extraData.content, 'user');
+                                    } else {
+                                        console.log("正常弹幕:", extraData.content);
+                                        logDanmuToBox(extraData.content, 'normal');
+                                    }
+                                }
+                            } catch (e) {
+                                console.log("解析弹幕内容失败:", e);
+                            }
+                        }
+
                         if (data.code === 0 && data.msg === "f") {
                             for(let i = 0; i< exp; i++){
                                 showFloatingMessage(ban_system_msg, ban_color_system);
