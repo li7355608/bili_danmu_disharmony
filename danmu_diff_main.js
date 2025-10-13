@@ -152,7 +152,7 @@
         };
 
         saveBtn.onclick = () => {
-            saveDanmuLogs(contentArea);
+            saveDanmuLogs(contentArea, saveBtn);
         };
 
         closeBtn.onclick = () => {
@@ -204,7 +204,7 @@
     }
 
     // 保存弹幕记录到文件
-    function saveDanmuLogs(contentArea) {
+    function saveDanmuLogs(contentArea, saveBtn) {
         const entries = contentArea.children;
         if (entries.length === 0) {
             alert('没有弹幕记录可保存！');
