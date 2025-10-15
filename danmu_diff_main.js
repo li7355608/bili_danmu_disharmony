@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      2.1
+// @version      2.2
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -161,7 +161,7 @@
             logBox.setAttribute('data-closed', 'true');
         };
 
-        // 添加拖拽功能
+        // 添加拖拽功能 - 优化版本
         let isDragging = false;
         let currentX;
         let currentY;
@@ -169,6 +169,7 @@
         let initialY;
         let xOffset = 0;
         let yOffset = 0;
+        let dragThrottleTimer = null;
 
         titleBar.addEventListener('mousedown', dragStart);
         document.addEventListener('mousemove', drag);
@@ -180,19 +181,28 @@
 
             if (e.target === titleBar || titleBar.contains(e.target)) {
                 isDragging = true;
+                // 启用硬件加速
+                logBox.style.willChange = 'transform';
             }
         }
 
         function drag(e) {
             if (isDragging) {
-                e.preventDefault();
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
+                // 使用requestAnimationFrame节流，避免频繁DOM更新
+                if (dragThrottleTimer) return;
+                
+                dragThrottleTimer = requestAnimationFrame(() => {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
 
-                xOffset = currentX;
-                yOffset = currentY;
+                    xOffset = currentX;
+                    yOffset = currentY;
 
-                logBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                    // 使用transform3d启用硬件加速
+                    logBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                    dragThrottleTimer = null;
+                });
             }
         }
 
@@ -200,12 +210,19 @@
             initialX = currentX;
             initialY = currentY;
             isDragging = false;
+            // 清理节流定时器
+            if (dragThrottleTimer) {
+                cancelAnimationFrame(dragThrottleTimer);
+                dragThrottleTimer = null;
+            }
+            // 禁用硬件加速以节省资源
+            logBox.style.willChange = 'auto';
         }
 
         return logBox;
     }
 
-    // 保存弹幕记录到文件
+    // 保存弹幕记录到文件 - 优化版本
     function saveDanmuLogs(contentArea, saveBtn) {
         const entries = contentArea.children;
         if (entries.length === 0) {
@@ -213,19 +230,23 @@
             return;
         }
 
-        let saveContent = '弹幕记录保存文件\n';
-        saveContent += '='.repeat(50) + '\n';
-        saveContent += `保存时间: ${new Date().toLocaleString()}\n`;
-        saveContent += `记录总数: ${entries.length} 条\n`;
-        saveContent += '='.repeat(50) + '\n\n';
+        // 使用StringBuilder模式优化字符串拼接
+        const saveContent = [
+            '弹幕记录保存文件',
+            '='.repeat(50),
+            `保存时间: ${new Date().toLocaleString()}`,
+            `记录总数: ${entries.length} 条`,
+            '='.repeat(50),
+            ''
+        ];
 
         // 统计信息
         let systemCount = 0;
         let userCount = 0;
         let normalCount = 0;
 
-        for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i];
+        // 使用更高效的遍历方式
+        Array.from(entries).forEach(entry => {
             const typeDiv = entry.querySelector('div:nth-child(2)');
             const contentDiv = entry.querySelector('div:nth-child(3)');
             const timeDiv = entry.querySelector('div:nth-child(1)');
@@ -240,31 +261,37 @@
                 else if (type.includes('主播屏蔽')) userCount++;
                 else if (type.includes('正常显示')) normalCount++;
 
-                saveContent += `[${time}] ${type}\n`;
-                saveContent += `内容: ${content}\n`;
-                saveContent += '-'.repeat(30) + '\n';
+                saveContent.push(`[${time}] ${type}`);
+                saveContent.push(`内容: ${content}`);
+                saveContent.push('-'.repeat(30));
             }
-        }
+        });
 
         // 添加统计信息
-        saveContent += '\n' + '='.repeat(50) + '\n';
-        saveContent += '统计信息:\n';
-        saveContent += `系统屏蔽: ${systemCount} 条\n`;
-        saveContent += `主播屏蔽: ${userCount} 条\n`;
-        saveContent += `正常显示: ${normalCount} 条\n`;
-        saveContent += `总计: ${entries.length} 条\n`;
-        saveContent += '='.repeat(50) + '\n';
+        saveContent.push('');
+        saveContent.push('='.repeat(50));
+        saveContent.push('统计信息:');
+        saveContent.push(`系统屏蔽: ${systemCount} 条`);
+        saveContent.push(`主播屏蔽: ${userCount} 条`);
+        saveContent.push(`正常显示: ${normalCount} 条`);
+        saveContent.push(`总计: ${entries.length} 条`);
+        saveContent.push('='.repeat(50));
 
-        // 创建下载链接
-        const blob = new Blob([saveContent], { type: 'text/plain;charset=utf-8' });
+        // 创建下载链接 - 优化内存使用
+        const blob = new Blob([saveContent.join('\n')], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `弹幕记录_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+        a.style.display = 'none'; // 避免闪烁
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        
+        // 立即清理DOM和URL
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
 
         // 显示保存成功提示
         const originalText = saveBtn.textContent;
@@ -276,42 +303,93 @@
         }, 2000);
     }
 
-    // 记录弹幕到文本框
+    // 添加全局清理函数
+    function cleanup() {
+        // 清理DOM缓存
+        domCache.clearCache();
+        
+        // 清理URL缓存
+        urlCache.clear();
+        
+        // 清理所有动画定时器
+        const animatedElements = document.querySelectorAll('[style*="will-change"]');
+        animatedElements.forEach(el => {
+            el.style.willChange = 'auto';
+        });
+        
+        console.log('[弹幕反诈] 清理完成');
+    }
+
+    // 页面卸载时清理资源
+    window.addEventListener('beforeunload', cleanup);
+
+    // DOM缓存对象
+    const domCache = {
+        logBox: null,
+        contentArea: null,
+        getLogBox() {
+            if (!this.logBox) {
+                this.logBox = document.getElementById('danmu-log-box') || createDanmuLogBox();
+            }
+            return this.logBox;
+        },
+        getContentArea() {
+            if (!this.contentArea) {
+                this.contentArea = document.getElementById('danmu-log-content');
+            }
+            return this.contentArea;
+        },
+        clearCache() {
+            this.logBox = null;
+            this.contentArea = null;
+        }
+    };
+
+    // 类型配置缓存
+    const typeConfig = {
+        system: { text: '系统屏蔽', color: '#ff6b6b' },
+        user: { text: '主播屏蔽', color: '#ffa500' },
+        normal: { text: '正常显示', color: '#00ff00' }
+    };
+
+    // 记录弹幕到文本框 - 优化版本
     function logDanmuToBox(content, type) {
-        let logBox = document.getElementById('danmu-log-box');
-        if (!logBox) {
-            logBox = createDanmuLogBox();
-        } else if (logBox.getAttribute('data-closed') === 'true') {
+        const logBox = domCache.getLogBox();
+        
+        if (logBox.getAttribute('data-closed') === 'true') {
             // 如果弹幕框被关闭，重新显示
             logBox.style.display = 'block';
             logBox.removeAttribute('data-closed');
         }
 
-        const contentArea = document.getElementById('danmu-log-content');
+        const contentArea = domCache.getContentArea();
         const timestamp = new Date().toLocaleTimeString();
-        const typeText = type === 'system' ? '系统屏蔽' : type === 'user' ? '主播屏蔽' : '正常显示';
-        const typeColor = type === 'system' ? '#ff6b6b' : type === 'user' ? '#ffa500' : '#00ff00';
+        const config = typeConfig[type] || typeConfig.normal;
 
+        // 使用DocumentFragment批量操作DOM
+        const fragment = document.createDocumentFragment();
         const logEntry = document.createElement('div');
         logEntry.style.cssText = `
             margin-bottom: 5px;
             padding: 3px;
-            border-left: 3px solid ${typeColor};
+            border-left: 3px solid ${config.color};
             background: rgba(255, 255, 255, 0.1);
         `;
         logEntry.innerHTML = `
             <div style="font-size: 10px; color: #ccc;">${timestamp}</div>
-            <div style="color: ${typeColor}; font-weight: bold;">[${typeText}]</div>
+            <div style="color: ${config.color}; font-weight: bold;">[${config.text}]</div>
             <div>${content}</div>
         `;
-
-        contentArea.appendChild(logEntry);
+        
+        fragment.appendChild(logEntry);
+        contentArea.appendChild(fragment);
         contentArea.scrollTop = contentArea.scrollHeight;
 
-        // 限制记录数量，避免占用过多内存
+        // 优化记录数量限制 - 批量删除旧记录
         const entries = contentArea.children;
         if (entries.length > 50) {
-            contentArea.removeChild(entries[0]);
+            const toRemove = Array.from(entries).slice(0, entries.length - 50);
+            toRemove.forEach(entry => entry.remove());
         }
     }
 
@@ -330,36 +408,145 @@
         }, msg_time);
     }
 
+    // 优化URL检查 - 使用正则表达式和缓存
+    const SEND_DM_URL_REGEX = /api\.live\.bilibili\.com\/msg\/send/;
+    const urlCache = new Map();
+    
     function checkSendDm(url) {
-        return url.indexOf('api.live.bilibili.com/msg/send') > -1;
+        if (!url) return false;
+        
+        // 使用缓存避免重复计算
+        if (urlCache.has(url)) {
+            return urlCache.get(url);
+        }
+        
+        const result = SEND_DM_URL_REGEX.test(url);
+        urlCache.set(url, result);
+        
+        // 限制缓存大小，避免内存泄漏
+        if (urlCache.size > 100) {
+            const firstKey = urlCache.keys().next().value;
+            urlCache.delete(firstKey);
+        }
+        
+        return result;
     }
 
     function showFloatingMessage(message, color) {
         const div = document.createElement('div');
         div.textContent = message;
-        div.style.position = 'fixed';
-        div.style.top = dm_top;
-        div.style.left = dm_left;
-        div.style.color = color;
-        div.style.fontSize = dm_fontSize;
-        div.style.zIndex = '9999';
-        div.style.whiteSpace = 'nowrap';
+        div.style.cssText = `
+            position: fixed;
+            top: ${dm_top};
+            left: ${dm_left};
+            color: ${color};
+            font-size: ${dm_fontSize};
+            z-index: 9999;
+            white-space: nowrap;
+            will-change: transform;
+            transform: translateZ(0);
+            pointer-events: none;
+        `;
         document.body.appendChild(div);
 
-        function animate() {
-            let left = parseFloat(div.style.left);
-            if (left > 100) {
+        // 使用更高效的动画实现
+        let startTime = null;
+        const animationDuration = 10000; // 10秒动画
+        const startLeft = -16; // 起始位置
+        const endLeft = 100; // 结束位置
+
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            
+            const elapsed = timestamp - startTime;
+            const progress = Math.min(elapsed / animationDuration, 1);
+            
+            if (progress >= 1) {
                 div.remove();
                 return;
             }
-            div.style.left = `${left + speed}%`;
+            
+            // 使用缓动函数让动画更自然
+            const easeProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+            const currentLeft = startLeft + (endLeft - startLeft) * easeProgress;
+            
+            div.style.transform = `translate3d(${currentLeft}%, 0, 0)`;
             requestAnimationFrame(animate);
         }
-        animate();
+        
+        requestAnimationFrame(animate);
 
+        // 备用清理机制
         setTimeout(() => {
-            div.remove();
-        }, 10000);
+            if (div.parentNode) {
+                div.remove();
+            }
+        }, animationDuration + 1000);
+    }
+
+    // 异步处理弹幕响应数据
+    async function processDanmuResponse(data, originalResponse, resolve, reject) {
+        try {
+            // 在修改数据前提取弹幕内容
+            if (data.data && data.data.mode_info && data.data.mode_info.extra) {
+                try {
+                    const extraData = JSON.parse(data.data.mode_info.extra);
+                    if (extraData.content) {
+                        // 根据屏蔽类型进行针对性输出
+                        if (data.msg === "f") {
+                            console.log("系统屏蔽弹幕:", extraData.content);
+                            logDanmuToBox(extraData.content, 'system');
+                        } else if (data.msg === "k") {
+                            console.log("主播屏蔽弹幕:", extraData.content);
+                            logDanmuToBox(extraData.content, 'user');
+                        } else {
+                            console.log("正常弹幕:", extraData.content);
+                            logDanmuToBox(extraData.content, 'normal');
+                        }
+                    }
+                } catch (e) {
+                    console.log("解析弹幕内容失败:", e);
+                }
+            }
+
+            // 处理响应数据
+            if (data.code === 0 && data.msg === "f") {
+                for(let i = 0; i < exp; i++){
+                    showFloatingMessage(ban_system_msg, ban_color_system);
+                }
+                data.code = -101;
+                data.message = "你的弹幕没发出去，你被骗了，系统干的";
+                data.ttl = 1;
+                delete data.msg;
+                delete data.data;
+            } else if (data.code === 0 && data.msg === "k") {
+                for(let i = 0; i < exp; i++){
+                    showFloatingMessage(ban_user_msg, ban_color_user);
+                }
+                data.code = -101;
+                data.message = "你的弹幕没发出去，你被骗了，主播干的";
+                data.ttl = 1;
+                delete data.msg;
+                delete data.data;
+            } else {
+                console.log("恭喜，您的弹幕正常显示！");
+                if(success_send === true){
+                    showFloatingMessage(success_msg, success_color);
+                }
+            }
+            
+            const body = JSON.stringify(data);
+            const newRes = new Response(body, {
+                status: originalResponse.status,
+                statusText: originalResponse.statusText,
+                headers: originalResponse.headers
+            });
+            resolve(newRes);
+        } catch (error) {
+            console.error("处理弹幕响应时出错:", error);
+            showFloatingMessage(error_send_msg, error_color);
+            reject(error);
+        }
     }
 
     const originFetchBLDMAF = windowCtx.fetch;
@@ -379,63 +566,19 @@
 
         if (checkSendDm(url)) {
             return new Promise((resolve, reject) => {
-                originFetchBLDMAF(...arg).then(r => {
-                    r.json().then(data => {
-                        // 在修改数据前提取弹幕内容
-                        if (data.data && data.data.mode_info && data.data.mode_info.extra) {
-                            try {
-                                const extraData = JSON.parse(data.data.mode_info.extra);
-                                if (extraData.content) {
-                                    // 根据屏蔽类型进行针对性输出
-                                    if (data.msg === "f") {
-                                        console.log("系统屏蔽弹幕:", extraData.content);
-                                        logDanmuToBox(extraData.content, 'system');
-                                    } else if (data.msg === "k") {
-                                        console.log("主播屏蔽弹幕:", extraData.content);
-                                        logDanmuToBox(extraData.content, 'user');
-                                    } else {
-                                        console.log("正常弹幕:", extraData.content);
-                                        logDanmuToBox(extraData.content, 'normal');
-                                    }
-                                }
-                            } catch (e) {
-                                console.log("解析弹幕内容失败:", e);
-                            }
-                        }
-
-                        if (data.code === 0 && data.msg === "f") {
-                            for(let i = 0; i< exp; i++){
-                                showFloatingMessage(ban_system_msg, ban_color_system);
-                            }
-                            data.code = -101;
-                            data.message = "你的弹幕没发出去，你被骗了，系统干的";
-                            data.ttl = 1;
-                            delete data.msg;
-                            delete data.data;
-                        } else if (data.code === 0 && data.msg === "k") {
-                            for(let i = 0; i< exp; i++){
-                                showFloatingMessage(ban_user_msg, ban_color_user);
-                            }
-                            data.code = -101;
-                            data.message = "你的弹幕没发出去，你被骗了，主播干的";
-                            data.ttl = 1;
-                            delete data.msg;
-                            delete data.data;
-                        }else{
-                            console.log("恭喜，您的弹幕正常显示！")
-                            if(success_send === true){
-                                showFloatingMessage(success_msg, success_color);
-                            }
-                        }
-                        let body = JSON.stringify(data);
-                        let newRes = new Response(body, {
-                            status: r.status,
-                            statusText: r.statusText,
-                            headers: r.headers
-                        });
-                        resolve(newRes);
-                    });
+                originFetchBLDMAF(...arg).then(async r => {
+                    try {
+                        // 使用clone()避免消费原始响应
+                        const clonedResponse = r.clone();
+                        const data = await clonedResponse.json();
+                        await processDanmuResponse(data, r, resolve, reject);
+                    } catch (e) {
+                        console.error("处理弹幕请求时出错:", e);
+                        showFloatingMessage(error_send_msg, error_color);
+                        reject(e);
+                    }
                 }).catch(e => {
+                    console.error("弹幕请求失败:", e);
                     showFloatingMessage(error_send_msg, error_color);
                     reject(e);
                 });
