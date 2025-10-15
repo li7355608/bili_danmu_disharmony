@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      1.3
+// @version      2.1
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -157,6 +157,8 @@
 
         closeBtn.onclick = () => {
             logBox.style.display = 'none';
+            // 添加重新打开功能
+            logBox.setAttribute('data-closed', 'true');
         };
 
         // 添加拖拽功能
@@ -227,17 +229,17 @@
             const typeDiv = entry.querySelector('div:nth-child(2)');
             const contentDiv = entry.querySelector('div:nth-child(3)');
             const timeDiv = entry.querySelector('div:nth-child(1)');
-            
+
             if (typeDiv && contentDiv && timeDiv) {
                 const type = typeDiv.textContent;
                 const content = contentDiv.textContent;
                 const time = timeDiv.textContent;
-                
+
                 // 统计数量
                 if (type.includes('系统屏蔽')) systemCount++;
                 else if (type.includes('主播屏蔽')) userCount++;
                 else if (type.includes('正常显示')) normalCount++;
-                
+
                 saveContent += `[${time}] ${type}\n`;
                 saveContent += `内容: ${content}\n`;
                 saveContent += '-'.repeat(30) + '\n';
@@ -279,6 +281,10 @@
         let logBox = document.getElementById('danmu-log-box');
         if (!logBox) {
             logBox = createDanmuLogBox();
+        } else if (logBox.getAttribute('data-closed') === 'true') {
+            // 如果弹幕框被关闭，重新显示
+            logBox.style.display = 'block';
+            logBox.removeAttribute('data-closed');
         }
 
         const contentArea = document.getElementById('danmu-log-content');
