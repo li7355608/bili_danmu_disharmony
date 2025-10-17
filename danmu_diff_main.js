@@ -1250,24 +1250,48 @@
 
         // 使用更高效的遍历方式
         Array.from(entries).forEach(entry => {
-            const typeDiv = entry.querySelector('div:nth-child(2)');
-            const contentDiv = entry.querySelector('div:nth-child(3)');
             const timeDiv = entry.querySelector('div:nth-child(1)');
-
-            if (typeDiv && contentDiv && timeDiv) {
-                const type = typeDiv.textContent;
-                const content = contentDiv.textContent;
-                const time = timeDiv.textContent;
-
-                // 统计数量
-                if (type.includes('系统屏蔽')) systemCount++;
-                else if (type.includes('主播屏蔽')) userCount++;
-                else if (type.includes('正常显示')) normalCount++;
-
-                saveContent.push(`[${time}] ${type}`);
-                saveContent.push(`内容: ${content}`);
-                saveContent.push('-'.repeat(30));
+            const typeDiv = entry.querySelector('div:nth-child(2)');
+            
+            if (!timeDiv || !typeDiv) return;
+            
+            const type = typeDiv.textContent;
+            const time = timeDiv.textContent;
+            
+            // 检查是否有敏感词div（第3个div）
+            const sensitiveDiv = entry.querySelector('div:nth-child(3)');
+            let contentDiv, sensitiveWordsInfo = '';
+            
+            if (sensitiveDiv && sensitiveDiv.textContent.includes('检测到敏感词')) {
+                // 有敏感词的情况：第3个div是敏感词，第4个div是内容
+                contentDiv = entry.querySelector('div:nth-child(4)');
+                sensitiveWordsInfo = sensitiveDiv.textContent.replace('⚠️ 检测到敏感词: ', '');
+            } else {
+                // 没有敏感词的情况：第3个div就是内容
+                contentDiv = entry.querySelector('div:nth-child(3)');
             }
+            
+            if (!contentDiv) return;
+            
+            // 获取弹幕内容，需要去除HTML标签但保留文本内容
+            let content = contentDiv.innerHTML;
+            // 去除HTML标签，保留纯文本内容
+            content = content.replace(/<[^>]*>/g, '');
+
+            // 统计数量
+            if (type.includes('系统屏蔽')) systemCount++;
+            else if (type.includes('主播屏蔽')) userCount++;
+            else if (type.includes('正常显示')) normalCount++;
+
+            saveContent.push(`[${time}] ${type}`);
+            saveContent.push(`内容: ${content}`);
+            
+            // 如果有敏感词信息，添加到保存内容中
+            if (sensitiveWordsInfo) {
+                saveContent.push(`敏感词: ${sensitiveWordsInfo}`);
+            }
+            
+            saveContent.push('-'.repeat(30));
         });
 
         // 添加统计信息
