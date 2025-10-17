@@ -53,7 +53,7 @@
     const error_msg = "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)"
     const error_send_msg = "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
 
-    // 敏感词配置
+    // 敏感词管理器初始化配置
     const sensitiveWordsConfig = {
         // 默认敏感词列表
         words: [
@@ -488,6 +488,27 @@
         return logBox;
     }
 
+    // 配置选项UI管理
+    const configUI = {
+        enableCheckbox: null,
+        caseCheckbox: null,
+        fuzzyCheckbox: null,
+        
+        // 初始化配置选项UI
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox) {
+            this.enableCheckbox = enableCheckbox;
+            this.caseCheckbox = caseCheckbox;
+            this.fuzzyCheckbox = fuzzyCheckbox;
+        },
+        
+        // 重置配置选项UI到默认状态
+        resetToDefault() {
+            if (this.enableCheckbox) this.enableCheckbox.checked = true;
+            if (this.caseCheckbox) this.caseCheckbox.checked = false;
+            if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = true;
+        }
+    };
+
     // 敏感词管理界面
     function showSensitiveWordManager() {
         // 检查是否已经存在管理界面
@@ -766,6 +787,9 @@
         configSection.appendChild(document.createElement('br'));
         configSection.appendChild(fuzzyCheckbox);
         configSection.appendChild(fuzzyLabel);
+        
+        // 初始化配置选项UI管理器
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -1014,13 +1038,6 @@
 
         resetBtn.onclick = () => {
             if (confirm('确定要重置为默认敏感词列表吗？\n\n这将清除所有自定义敏感词和本地配置！')) {
-                // 定义默认敏感词列表
-                const defaultWords = [
-                    '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
-                    '政治', '色情', '暴力', '赌博', '毒品', '诈骗', '传销', '邪教',
-                    '反动', '分裂', '恐怖', '极端', '仇恨', '歧视', '侮辱', '诽谤'
-                ];
-                
                 // 清空本地保存的敏感词配置
                 localStorage.removeItem('danmu_sensitive_words');
                 
@@ -1028,15 +1045,14 @@
                 sensitiveWordsConfig.enabled = true;
                 sensitiveWordsConfig.caseSensitive = false;
                 sensitiveWordsConfig.fuzzyMatch = true;
-                sensitiveWordsConfig.words = [...defaultWords]; // 确保使用默认词列表
+                // 使用配置对象中的默认词列表，避免重复定义
+                const defaultWords = [...sensitiveWordsConfig.words];
                 
                 // 重置敏感词管理器到默认状态
                 sensitiveWordManager.saveWords(defaultWords);
                 
-                // 重置配置选项UI
-                enableCheckbox.checked = true;
-                caseCheckbox.checked = false;
-                fuzzyCheckbox.checked = true;
+                // 重置配置选项UI到默认状态
+                configUI.resetToDefault();
                 
                 // 强制刷新敏感词列表显示
                 updateWordList();
