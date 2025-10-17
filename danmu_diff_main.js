@@ -89,8 +89,10 @@
                     return config.words || sensitiveWordsConfig.words;
                 } catch (e) {
                     console.warn('解析敏感词配置失败，使用默认配置');
+                    return sensitiveWordsConfig.words;
                 }
             }
+            // 如果localStorage中没有数据，返回配置对象中的默认词列表
             return sensitiveWordsConfig.words;
         },
 
@@ -399,8 +401,17 @@
 
         // 绑定事件
         clearBtn.onclick = () => {
-            contentArea.innerHTML = '';
-            showNotification('弹幕记录已清空！', 'info', 2000);
+            // 检查是否有记录
+            if (contentArea.children.length === 0) {
+                showNotification('没有记录可清空！', 'warning', 2000);
+                return;
+            }
+            
+            // 二级确认
+            if (confirm('确定要清空所有弹幕记录吗？\n\n此操作不可撤销！')) {
+                contentArea.innerHTML = '';
+                showNotification('弹幕记录已清空！', 'success', 2000);
+            }
         };
 
         saveBtn.onclick = () => {
@@ -1002,12 +1013,37 @@
         };
 
         resetBtn.onclick = () => {
-            if (confirm('确定要重置为默认敏感词列表吗？这将清除所有自定义敏感词！')) {
-                sensitiveWordManager.saveWords(sensitiveWordsConfig.words);
-                updateWordList();
+            if (confirm('确定要重置为默认敏感词列表吗？\n\n这将清除所有自定义敏感词和本地配置！')) {
+                // 定义默认敏感词列表
+                const defaultWords = [
+                    '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
+                    '政治', '色情', '暴力', '赌博', '毒品', '诈骗', '传销', '邪教',
+                    '反动', '分裂', '恐怖', '极端', '仇恨', '歧视', '侮辱', '诽谤'
+                ];
+                
+                // 清空本地保存的敏感词配置
+                localStorage.removeItem('danmu_sensitive_words');
+                
+                // 重置敏感词配置对象到默认状态
+                sensitiveWordsConfig.enabled = true;
+                sensitiveWordsConfig.caseSensitive = false;
+                sensitiveWordsConfig.fuzzyMatch = true;
+                sensitiveWordsConfig.words = [...defaultWords]; // 确保使用默认词列表
+                
+                // 重置敏感词管理器到默认状态
+                sensitiveWordManager.saveWords(defaultWords);
+                
+                // 重置配置选项UI
                 enableCheckbox.checked = true;
                 caseCheckbox.checked = false;
                 fuzzyCheckbox.checked = true;
+                
+                // 强制刷新敏感词列表显示
+                updateWordList();
+                
+                // 清空输入框
+                addInput.value = '';
+                
                 showNotification('重置默认设置成功！', 'success');
             }
         };
@@ -1391,7 +1427,14 @@
                 }
             } catch (e) {
                 console.warn('解析敏感词配置失败，使用默认配置');
+                // 如果解析失败，清除损坏的配置
+                localStorage.removeItem('danmu_sensitive_words');
             }
+        } else {
+            // 如果没有保存的配置，确保使用默认值
+            sensitiveWordsConfig.enabled = true;
+            sensitiveWordsConfig.caseSensitive = false;
+            sensitiveWordsConfig.fuzzyMatch = true;
         }
     }
 
