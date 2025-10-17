@@ -1233,13 +1233,18 @@
             return;
         }
 
-        // 使用StringBuilder模式优化字符串拼接
+        // 使用StringBuilder模式优化字符串拼接 - 简化排版
         const saveContent = [
-            '弹幕记录保存文件',
-            '='.repeat(50),
-            `保存时间: ${new Date().toLocaleString()}`,
-            `记录总数: ${entries.length} 条`,
-            '='.repeat(50),
+            '================================================',
+            '                弹幕记录保存文件',
+            '================================================',
+            '',
+            '📅 保存时间: ' + new Date().toLocaleString(),
+            '📊 记录总数: ' + entries.length + ' 条',
+            '',
+            '================================================',
+            '                    详细记录',
+            '================================================',
             ''
         ];
 
@@ -1283,26 +1288,69 @@
             else if (type.includes('主播屏蔽')) userCount++;
             else if (type.includes('正常显示')) normalCount++;
 
-            saveContent.push(`[${time}] ${type}`);
-            saveContent.push(`内容: ${content}`);
+            // 根据类型选择图标和颜色标识
+            let typeIcon, typeColor;
+            if (type.includes('系统屏蔽')) {
+                typeIcon = '🚫';
+                typeColor = '[系统屏蔽]';
+            } else if (type.includes('主播屏蔽')) {
+                typeIcon = '⚠️';
+                typeColor = '[主播屏蔽]';
+            } else {
+                typeIcon = '✅';
+                typeColor = '[正常显示]';
+            }
+
+            // 添加简化的弹幕记录格式
+            saveContent.push('----------------------------------------');
+            saveContent.push(`${typeIcon} ${typeColor} | 🕐 ${time}`);
+            saveContent.push('----------------------------------------');
+            saveContent.push('📝 弹幕内容:');
+            
+            // 处理长文本换行
+            const maxLineLength = 50; // 每行最大字符数
+            const lines = content.match(new RegExp(`.{1,${maxLineLength}}`, 'g')) || [content];
+            lines.forEach(line => {
+                saveContent.push(`   ${line}`);
+            });
             
             // 如果有敏感词信息，添加到保存内容中
             if (sensitiveWordsInfo) {
-                saveContent.push(`敏感词: ${sensitiveWordsInfo}`);
+                saveContent.push('');
+                saveContent.push(`🔍 敏感词: ${sensitiveWordsInfo}`);
             }
             
-            saveContent.push('-'.repeat(30));
+            saveContent.push('');
         });
 
-        // 添加统计信息
+        // 添加统计信息 - 优化显示，使用百分比和固定长度进度条
+        saveContent.push('================================================');
+        saveContent.push('                    统计信息');
+        saveContent.push('================================================');
         saveContent.push('');
-        saveContent.push('='.repeat(50));
-        saveContent.push('统计信息:');
-        saveContent.push(`系统屏蔽: ${systemCount} 条`);
-        saveContent.push(`主播屏蔽: ${userCount} 条`);
-        saveContent.push(`正常显示: ${normalCount} 条`);
-        saveContent.push(`总计: ${entries.length} 条`);
-        saveContent.push('='.repeat(50));
+        saveContent.push('📊 弹幕类型统计:');
+        
+        // 计算百分比
+        const total = entries.length;
+        const systemPercent = total > 0 ? Math.round((systemCount / total) * 100) : 0;
+        const userPercent = total > 0 ? Math.round((userCount / total) * 100) : 0;
+        const normalPercent = total > 0 ? Math.round((normalCount / total) * 100) : 0;
+        
+        // 固定长度进度条（20个字符）
+        const maxBarLength = 20;
+        const systemBarLength = Math.round((systemCount / Math.max(total, 1)) * maxBarLength);
+        const userBarLength = Math.round((userCount / Math.max(total, 1)) * maxBarLength);
+        const normalBarLength = Math.round((normalCount / Math.max(total, 1)) * maxBarLength);
+        
+        saveContent.push('🚫 系统屏蔽: ' + String(systemCount).padStart(3) + ' 条 (' + String(systemPercent).padStart(3) + '%) ' + '█'.repeat(systemBarLength) + ' '.repeat(maxBarLength - systemBarLength));
+        saveContent.push('⚠️ 主播屏蔽: ' + String(userCount).padStart(3) + ' 条 (' + String(userPercent).padStart(3) + '%) ' + '█'.repeat(userBarLength) + ' '.repeat(maxBarLength - userBarLength));
+        saveContent.push('✅ 正常显示: ' + String(normalCount).padStart(3) + ' 条 (' + String(normalPercent).padStart(3) + '%) ' + '█'.repeat(normalBarLength) + ' '.repeat(maxBarLength - normalBarLength));
+        saveContent.push('');
+        saveContent.push(`📈 总计: ${entries.length} 条弹幕记录`);
+        saveContent.push('');
+        saveContent.push('================================================');
+        saveContent.push('                感谢使用弹幕反诈脚本');
+        saveContent.push('================================================');
 
         // 创建下载链接 - 优化内存使用
         const blob = new Blob([saveContent.join('\n')], { type: 'text/plain;charset=utf-8' });
