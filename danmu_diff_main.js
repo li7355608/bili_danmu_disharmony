@@ -1349,8 +1349,15 @@
         const config = typeConfig[type] || typeConfig.normal;
 
         // 检测敏感词并高亮显示
-        const highlightedContent = sensitiveWordManager.highlightSensitiveWords(content);
-        const detectedWords = sensitiveWordManager.detectSensitiveWords(content);
+        // 对于正常弹幕（type === 'normal'），直接跳过所有检测，使用原始内容
+        let highlightedContent = content;
+        let detectedWords = [];
+
+        // 弹幕内容被系统活主播屏蔽，对弹幕进行敏感词检测
+        if (type === 'system' || type === 'user') {
+            highlightedContent = sensitiveWordManager.highlightSensitiveWords(content);
+            detectedWords = sensitiveWordManager.detectSensitiveWords(content);
+        }
         
         // 使用DocumentFragment批量操作DOM
         const fragment = document.createDocumentFragment();
