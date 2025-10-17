@@ -198,18 +198,24 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            width: 300px;
-            height: 200px;
-            background: rgba(0, 0, 0, 0.8);
+            width: 320px;
+            height: 250px;
+            background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
             color: white;
             border: 2px solid #00a1d6;
-            border-radius: 8px;
-            padding: 10px;
+            border-radius: 12px;
+            padding: 15px;
             font-size: 12px;
             z-index: 10000;
             font-family: 'Microsoft YaHei', sans-serif;
             overflow: hidden;
             resize: both;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
 
         // 添加标题栏
@@ -218,65 +224,150 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #00a1d6;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #00a1d6;
+            background: linear-gradient(90deg, rgba(0, 161, 214, 0.1), transparent);
+            border-radius: 8px 8px 0 0;
+            padding: 8px 12px;
+            margin: -15px -15px 10px -15px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
 
         const title = document.createElement('span');
         title.textContent = '弹幕记录板';
-        title.style.fontWeight = 'bold';
+        title.style.cssText = `
+            font-weight: bold;
+            font-size: 14px;
+            color: #00a1d6;
+            text-shadow: 0 0 8px rgba(0, 161, 214, 0.5);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        `;
 
         const clearBtn = document.createElement('button');
         clearBtn.textContent = '清空';
         clearBtn.style.cssText = `
-            background: #ff6b6b;
+            background: linear-gradient(135deg, #ff6b6b, #e53e3e);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 2px 8px;
+            border-radius: 6px;
+            padding: 4px 8px;
             font-size: 10px;
+            font-weight: bold;
             cursor: pointer;
+            box-shadow: 0 2px 6px rgba(255, 107, 107, 0.3);
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 清空按钮悬停效果
+        clearBtn.onmouseenter = () => {
+            clearBtn.style.transform = 'scale(1.05)';
+            clearBtn.style.boxShadow = '0 4px 8px rgba(255, 107, 107, 0.4)';
+        };
+        clearBtn.onmouseleave = () => {
+            clearBtn.style.transform = 'scale(1)';
+            clearBtn.style.boxShadow = '0 2px 6px rgba(255, 107, 107, 0.3)';
+        };
 
         const saveBtn = document.createElement('button');
         saveBtn.textContent = '保存';
         saveBtn.style.cssText = `
-            background: #4CAF50;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 2px 8px;
+            border-radius: 6px;
+            padding: 4px 8px;
             font-size: 10px;
+            font-weight: bold;
             cursor: pointer;
+            box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+            transition: all 0.2s ease;
             margin-left: 5px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 保存按钮悬停效果
+        saveBtn.onmouseenter = () => {
+            saveBtn.style.transform = 'scale(1.05)';
+            saveBtn.style.boxShadow = '0 4px 8px rgba(76, 175, 80, 0.4)';
+        };
+        saveBtn.onmouseleave = () => {
+            saveBtn.style.transform = 'scale(1)';
+            saveBtn.style.boxShadow = '0 2px 6px rgba(76, 175, 80, 0.3)';
+        };
 
         const sensitiveBtn = document.createElement('button');
         sensitiveBtn.textContent = '敏感词';
         sensitiveBtn.style.cssText = `
-            background: #ff9800;
+            background: linear-gradient(135deg, #ff9800, #f57c00);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 2px 8px;
+            border-radius: 6px;
+            padding: 4px 8px;
             font-size: 10px;
+            font-weight: bold;
             cursor: pointer;
+            box-shadow: 0 2px 6px rgba(255, 152, 0, 0.3);
+            transition: all 0.2s ease;
             margin-left: 5px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 敏感词按钮悬停效果
+        sensitiveBtn.onmouseenter = () => {
+            sensitiveBtn.style.transform = 'scale(1.05)';
+            sensitiveBtn.style.boxShadow = '0 4px 8px rgba(255, 152, 0, 0.4)';
+        };
+        sensitiveBtn.onmouseleave = () => {
+            sensitiveBtn.style.transform = 'scale(1)';
+            sensitiveBtn.style.boxShadow = '0 2px 6px rgba(255, 152, 0, 0.3)';
+        };
 
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '×';
         closeBtn.style.cssText = `
-            background: #666;
+            background: linear-gradient(135deg, #666, #555);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 2px 6px;
+            border-radius: 6px;
+            padding: 4px 8px;
             font-size: 12px;
+            font-weight: bold;
             cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 102, 102, 0.3);
+            transition: all 0.2s ease;
             margin-left: 5px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 关闭按钮悬停效果
+        closeBtn.onmouseenter = () => {
+            closeBtn.style.transform = 'scale(1.05)';
+            closeBtn.style.boxShadow = '0 4px 8px rgba(102, 102, 102, 0.4)';
+        };
+        closeBtn.onmouseleave = () => {
+            closeBtn.style.transform = 'scale(1)';
+            closeBtn.style.boxShadow = '0 2px 6px rgba(102, 102, 102, 0.3)';
+        };
 
         titleBar.appendChild(title);
         titleBar.appendChild(clearBtn);
@@ -288,9 +379,18 @@
         const contentArea = document.createElement('div');
         contentArea.id = 'danmu-log-content';
         contentArea.style.cssText = `
-            height: calc(100% - 30px);
+            height: calc(100% - 40px);
             overflow-y: auto;
             word-wrap: break-word;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid rgba(0, 161, 214, 0.2);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         `;
 
         logBox.appendChild(titleBar);
@@ -300,6 +400,7 @@
         // 绑定事件
         clearBtn.onclick = () => {
             contentArea.innerHTML = '';
+            showNotification('弹幕记录已清空！', 'info', 2000);
         };
 
         saveBtn.onclick = () => {
@@ -1071,7 +1172,7 @@
     function saveDanmuLogs(contentArea, saveBtn) {
         const entries = contentArea.children;
         if (entries.length === 0) {
-            alert('没有弹幕记录可保存！');
+            showNotification('没有弹幕记录可保存！', 'warning', 3000);
             return;
         }
 
@@ -1141,10 +1242,11 @@
         // 显示保存成功提示
         const originalText = saveBtn.textContent;
         saveBtn.textContent = '已保存';
-        saveBtn.style.background = '#2196F3';
+        saveBtn.style.background = 'linear-gradient(135deg, #2196F3, #1976d2)';
+        showNotification('弹幕记录保存成功！', 'success', 2000);
         setTimeout(() => {
             saveBtn.textContent = originalText;
-            saveBtn.style.background = '#4CAF50';
+            saveBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
         }, 2000);
     }
 
@@ -1219,26 +1321,46 @@
         const fragment = document.createDocumentFragment();
         const logEntry = document.createElement('div');
         logEntry.style.cssText = `
-            margin-bottom: 5px;
-            padding: 3px;
-            border-left: 3px solid ${config.color};
-            background: rgba(255, 255, 255, 0.1);
+            margin-bottom: 8px;
+            padding: 12px;
+            border-left: 4px solid ${config.color};
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+            border-radius: 8px;
+            border: 1px solid rgba(0, 161, 214, 0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         `;
+        
+        // 弹幕记录项悬停效果
+        logEntry.onmouseenter = () => {
+            logEntry.style.transform = 'translateX(3px)';
+            logEntry.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+            logEntry.style.borderColor = 'rgba(0, 161, 214, 0.5)';
+        };
+        logEntry.onmouseleave = () => {
+            logEntry.style.transform = 'translateX(0)';
+            logEntry.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+            logEntry.style.borderColor = 'rgba(0, 161, 214, 0.2)';
+        };
         
         // 构建弹幕信息显示
         let danmuInfo = `
-            <div style="font-size: 10px; color: #ccc;">${timestamp}</div>
-            <div style="color: ${config.color}; font-weight: bold;">[${config.text}]</div>
+            <div style="font-size: 11px; color: #00a1d6; font-weight: bold; margin-bottom: 4px; text-shadow: 0 0 4px rgba(0, 161, 214, 0.3);">${timestamp}</div>
+            <div style="color: ${config.color}; font-weight: bold; font-size: 12px; margin-bottom: 6px; text-shadow: 0 0 4px ${config.color}40;">[${config.text}]</div>
         `;
         
         // 如果有敏感词，添加敏感词提示
         if (detectedWords.length > 0) {
             const sensitiveWordsList = detectedWords.map(item => item.word).join(', ');
-            danmuInfo += `<div style="font-size: 9px; color: #ff9800; margin: 2px 0;">⚠️ 检测到敏感词: ${sensitiveWordsList}</div>`;
+            danmuInfo += `<div style="font-size: 10px; color: #ff9800; margin: 4px 0; padding: 4px 8px; background: rgba(255, 152, 0, 0.1); border-radius: 4px; border-left: 3px solid #ff9800; font-weight: bold; text-shadow: 0 0 4px rgba(255, 152, 0, 0.3);">⚠️ 检测到敏感词: ${sensitiveWordsList}</div>`;
         }
         
         // 添加弹幕内容（支持HTML高亮）
-        danmuInfo += `<div style="word-break: break-all;">${highlightedContent}</div>`;
+        danmuInfo += `<div style="word-break: break-all; font-size: 13px; line-height: 1.4; margin-top: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; border: 1px solid rgba(0, 161, 214, 0.1);">${highlightedContent}</div>`;
         
         logEntry.innerHTML = danmuInfo;
         
