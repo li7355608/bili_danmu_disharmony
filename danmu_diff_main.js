@@ -70,11 +70,18 @@
             borderRadius: '2px',
             textShadow: '0 0 2px rgba(255, 0, 0, 0.3)'
         },
-        // 是否启用敏感词检测
+        // 默认配置参数，仅在初始化时有效
+        defaultConfig: {
+            // 是否启用敏感词检测
+            enabled: true,
+            // 是否区分大小写
+            caseSensitive: false,
+            // 是否启用模糊匹配
+            fuzzyMatch: true
+        },
+        // 当前运行时配置（用户自定义，会从本地存储中更新，修改默认参数请勿修改此处）
         enabled: true,
-        // 是否区分大小写
         caseSensitive: false,
-        // 是否启用模糊匹配
         fuzzyMatch: true
     };
 
@@ -503,9 +510,9 @@
         
         // 重置配置选项UI到默认状态
         resetToDefault() {
-            if (this.enableCheckbox) this.enableCheckbox.checked = true;
-            if (this.caseCheckbox) this.caseCheckbox.checked = false;
-            if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = true;
+            if (this.enableCheckbox) this.enableCheckbox.checked = sensitiveWordsConfig.defaultConfig.enabled;
+            if (this.caseCheckbox) this.caseCheckbox.checked = sensitiveWordsConfig.defaultConfig.caseSensitive;
+            if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
         }
     };
 
@@ -1042,9 +1049,10 @@
                 localStorage.removeItem('danmu_sensitive_words');
                 
                 // 重置敏感词配置对象到默认状态
-                sensitiveWordsConfig.enabled = true;
-                sensitiveWordsConfig.caseSensitive = false;
-                sensitiveWordsConfig.fuzzyMatch = true;
+                sensitiveWordsConfig.enabled = sensitiveWordsConfig.defaultConfig.enabled;
+                sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
+                sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
+
                 // 使用配置对象中的默认词列表，避免重复定义
                 const defaultWords = [...sensitiveWordsConfig.words];
                 
@@ -1436,15 +1444,15 @@
     }
 
 
-    // 初始化敏感词配置
+    // 从本地存储初始化敏感词配置
     function initSensitiveWordsConfig() {
         const saved = localStorage.getItem('danmu_sensitive_words');
         if (saved) {
             try {
                 const config = JSON.parse(saved);
-                sensitiveWordsConfig.enabled = config.enabled !== undefined ? config.enabled : true;
-                sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : false;
-                sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : true;
+                sensitiveWordsConfig.enabled = config.enabled !== undefined ? config.enabled : sensitiveWordsConfig.defaultConfig.enabled;
+                sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : sensitiveWordsConfig.defaultConfig.caseSensitive;
+                sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : sensitiveWordsConfig.defaultConfig.fuzzyMatch;
                 if (config.words && Array.isArray(config.words)) {
                     sensitiveWordsConfig.words = config.words;
                 }
@@ -1455,9 +1463,9 @@
             }
         } else {
             // 如果没有保存的配置，确保使用默认值
-            sensitiveWordsConfig.enabled = true;
-            sensitiveWordsConfig.caseSensitive = false;
-            sensitiveWordsConfig.fuzzyMatch = true;
+            sensitiveWordsConfig.enabled = sensitiveWordsConfig.defaultConfig.enabled;
+            sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
+            sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
         }
     }
 
