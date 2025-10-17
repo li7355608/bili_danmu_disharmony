@@ -53,6 +53,143 @@
     const error_msg = "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)"
     const error_send_msg = "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
 
+    // 敏感词配置
+    const sensitiveWordsConfig = {
+        // 默认敏感词列表
+        words: [
+            '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
+            '政治', '色情', '暴力', '赌博', '毒品', '诈骗', '传销', '邪教',
+            '反动', '分裂', '恐怖', '极端', '仇恨', '歧视', '侮辱', '诽谤'
+        ],
+        // 敏感词高亮样式
+        highlightStyle: {
+            backgroundColor: '#ffeb3b',
+            color: '#d32f2f',
+            fontWeight: 'bold',
+            padding: '1px 2px',
+            borderRadius: '2px',
+            textShadow: '0 0 2px rgba(255, 0, 0, 0.3)'
+        },
+        // 是否启用敏感词检测
+        enabled: true,
+        // 是否区分大小写
+        caseSensitive: false,
+        // 是否启用模糊匹配
+        fuzzyMatch: true
+    };
+
+    // 敏感词管理器
+    const sensitiveWordManager = {
+        // 获取敏感词列表
+        getWords() {
+            const saved = localStorage.getItem('danmu_sensitive_words');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    return config.words || sensitiveWordsConfig.words;
+                } catch (e) {
+                    console.warn('解析敏感词配置失败，使用默认配置');
+                }
+            }
+            return sensitiveWordsConfig.words;
+        },
+
+        // 保存敏感词列表
+        saveWords(words) {
+            const config = {
+                words: words,
+                enabled: sensitiveWordsConfig.enabled,
+                caseSensitive: sensitiveWordsConfig.caseSensitive,
+                fuzzyMatch: sensitiveWordsConfig.fuzzyMatch
+            };
+            localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
+        },
+
+        // 添加敏感词
+        addWord(word) {
+            const words = this.getWords();
+            if (!words.includes(word)) {
+                words.push(word);
+                this.saveWords(words);
+                return true;
+            }
+            return false;
+        },
+
+        // 删除敏感词
+        removeWord(word) {
+            const words = this.getWords();
+            const index = words.indexOf(word);
+            if (index > -1) {
+                words.splice(index, 1);
+                this.saveWords(words);
+                return true;
+            }
+            return false;
+        },
+
+        // 检测敏感词
+        detectSensitiveWords(text) {
+            if (!sensitiveWordsConfig.enabled || !text) return [];
+            
+            const words = this.getWords();
+            const detectedWords = [];
+            const textToCheck = sensitiveWordsConfig.caseSensitive ? text : text.toLowerCase();
+            
+            words.forEach(word => {
+                const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
+                
+                if (sensitiveWordsConfig.fuzzyMatch) {
+                    // 模糊匹配：检查是否包含敏感词
+                    if (textToCheck.includes(wordToCheck)) {
+                        detectedWords.push({
+                            word: word,
+                            originalWord: word,
+                            startIndex: textToCheck.indexOf(wordToCheck),
+                            endIndex: textToCheck.indexOf(wordToCheck) + wordToCheck.length
+                        });
+                    }
+                } else {
+                    // 精确匹配：使用正则表达式
+                    const regex = new RegExp(`\\b${wordToCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+                    let match;
+                    while ((match = regex.exec(textToCheck)) !== null) {
+                        detectedWords.push({
+                            word: word,
+                            originalWord: word,
+                            startIndex: match.index,
+                            endIndex: match.index + match[0].length
+                        });
+                    }
+                }
+            });
+            
+            return detectedWords;
+        },
+
+        // 高亮敏感词
+        highlightSensitiveWords(text) {
+            const detectedWords = this.detectSensitiveWords(text);
+            if (detectedWords.length === 0) return text;
+            
+            // 按位置排序，从后往前替换避免位置偏移
+            detectedWords.sort((a, b) => b.startIndex - a.startIndex);
+            
+            let highlightedText = text;
+            detectedWords.forEach(item => {
+                const before = highlightedText.substring(0, item.startIndex);
+                const sensitive = highlightedText.substring(item.startIndex, item.endIndex);
+                const after = highlightedText.substring(item.endIndex);
+                
+                const highlightSpan = `<span style="background-color: ${sensitiveWordsConfig.highlightStyle.backgroundColor}; color: ${sensitiveWordsConfig.highlightStyle.color}; font-weight: ${sensitiveWordsConfig.highlightStyle.fontWeight}; padding: ${sensitiveWordsConfig.highlightStyle.padding}; border-radius: ${sensitiveWordsConfig.highlightStyle.borderRadius}; text-shadow: ${sensitiveWordsConfig.highlightStyle.textShadow};">${sensitive}</span>`;
+                
+                highlightedText = before + highlightSpan + after;
+            });
+            
+            return highlightedText;
+        }
+    };
+
     // 创建浮动文本框用于记录被拦截的弹幕
     function createDanmuLogBox() {
         const logBox = document.createElement('div');
@@ -115,6 +252,19 @@
             margin-left: 5px;
         `;
 
+        const sensitiveBtn = document.createElement('button');
+        sensitiveBtn.textContent = '敏感词';
+        sensitiveBtn.style.cssText = `
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 8px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 5px;
+        `;
+
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '×';
         closeBtn.style.cssText = `
@@ -131,6 +281,7 @@
         titleBar.appendChild(title);
         titleBar.appendChild(clearBtn);
         titleBar.appendChild(saveBtn);
+        titleBar.appendChild(sensitiveBtn);
         titleBar.appendChild(closeBtn);
 
         // 添加内容区域
@@ -153,6 +304,10 @@
 
         saveBtn.onclick = () => {
             saveDanmuLogs(contentArea, saveBtn);
+        };
+
+        sensitiveBtn.onclick = () => {
+            showSensitiveWordManager();
         };
 
         closeBtn.onclick = () => {
@@ -220,6 +375,497 @@
         }
 
         return logBox;
+    }
+
+    // 敏感词管理界面
+    function showSensitiveWordManager() {
+        // 检查是否已经存在管理界面
+        let managerModal = document.getElementById('sensitive-word-manager');
+        if (managerModal) {
+            managerModal.style.display = 'block';
+            return;
+        }
+
+        // 创建模态框
+        managerModal = document.createElement('div');
+        managerModal.id = 'sensitive-word-manager';
+        managerModal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 20000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        // 创建管理面板
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            background: #2c2c2c;
+            border: 2px solid #00a1d6;
+            border-radius: 8px;
+            padding: 20px;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: white;
+            font-family: 'Microsoft YaHei', sans-serif;
+            position: relative;
+        `;
+
+        // 标题栏
+        const titleBar = document.createElement('div');
+        titleBar.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #00a1d6;
+            cursor: move;
+            user-select: none;
+        `;
+
+        const title = document.createElement('h3');
+        title.textContent = '敏感词管理';
+        title.style.margin = '0';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = `
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            font-size: 16px;
+            cursor: pointer;
+        `;
+
+        titleBar.appendChild(title);
+        titleBar.appendChild(closeBtn);
+
+        // 添加敏感词区域
+        const addSection = document.createElement('div');
+        addSection.style.cssText = `
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        `;
+
+        const addLabel = document.createElement('label');
+        addLabel.textContent = '添加敏感词:';
+        addLabel.style.display = 'block';
+        addLabel.style.marginBottom = '5px';
+
+        const addInput = document.createElement('input');
+        addInput.type = 'text';
+        addInput.placeholder = '输入要添加的敏感词';
+        addInput.style.cssText = `
+            width: 70%;
+            padding: 5px;
+            border: 1px solid #555;
+            border-radius: 3px;
+            background: #333;
+            color: white;
+            margin-right: 10px;
+        `;
+
+        const addBtn = document.createElement('button');
+        addBtn.textContent = '添加';
+        addBtn.style.cssText = `
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 15px;
+            cursor: pointer;
+        `;
+
+        addSection.appendChild(addLabel);
+        addSection.appendChild(addInput);
+        addSection.appendChild(addBtn);
+
+        // 敏感词列表区域
+        const listSection = document.createElement('div');
+        listSection.style.cssText = `
+            margin-bottom: 20px;
+        `;
+
+        const listLabel = document.createElement('label');
+        listLabel.textContent = '当前敏感词列表:';
+        listLabel.style.display = 'block';
+        listLabel.style.marginBottom = '10px';
+
+        const wordList = document.createElement('div');
+        wordList.id = 'sensitive-word-list';
+        wordList.style.cssText = `
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 10px;
+            background: #333;
+        `;
+
+        listSection.appendChild(listLabel);
+        listSection.appendChild(wordList);
+
+        // 配置区域
+        const configSection = document.createElement('div');
+        configSection.style.cssText = `
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        `;
+
+        const configLabel = document.createElement('label');
+        configLabel.textContent = '检测配置:';
+        configLabel.style.display = 'block';
+        configLabel.style.marginBottom = '10px';
+
+        const enableCheckbox = document.createElement('input');
+        enableCheckbox.type = 'checkbox';
+        enableCheckbox.id = 'enable-sensitive-check';
+        enableCheckbox.checked = sensitiveWordsConfig.enabled;
+
+        const enableLabel = document.createElement('label');
+        enableLabel.htmlFor = 'enable-sensitive-check';
+        enableLabel.textContent = '启用敏感词检测';
+        enableLabel.style.marginLeft = '5px';
+
+        const caseCheckbox = document.createElement('input');
+        caseCheckbox.type = 'checkbox';
+        caseCheckbox.id = 'case-sensitive-check';
+        caseCheckbox.checked = sensitiveWordsConfig.caseSensitive;
+
+        const caseLabel = document.createElement('label');
+        caseLabel.htmlFor = 'case-sensitive-check';
+        caseLabel.textContent = '区分大小写';
+        caseLabel.style.marginLeft = '5px';
+
+        const fuzzyCheckbox = document.createElement('input');
+        fuzzyCheckbox.type = 'checkbox';
+        fuzzyCheckbox.id = 'fuzzy-match-check';
+        fuzzyCheckbox.checked = sensitiveWordsConfig.fuzzyMatch;
+
+        const fuzzyLabel = document.createElement('label');
+        fuzzyLabel.htmlFor = 'fuzzy-match-check';
+        fuzzyLabel.textContent = '模糊匹配';
+        fuzzyLabel.style.marginLeft = '5px';
+
+        configSection.appendChild(configLabel);
+        configSection.appendChild(enableCheckbox);
+        configSection.appendChild(enableLabel);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(caseCheckbox);
+        configSection.appendChild(caseLabel);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(fuzzyCheckbox);
+        configSection.appendChild(fuzzyLabel);
+
+        // 操作按钮区域
+        const buttonSection = document.createElement('div');
+        buttonSection.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        `;
+
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = '重置默认';
+        resetBtn.style.cssText = `
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 8px 15px;
+            cursor: pointer;
+        `;
+
+        const saveConfigBtn = document.createElement('button');
+        saveConfigBtn.textContent = '保存配置';
+        saveConfigBtn.style.cssText = `
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 8px 15px;
+            cursor: pointer;
+        `;
+
+        buttonSection.appendChild(resetBtn);
+        buttonSection.appendChild(saveConfigBtn);
+
+        // 组装面板
+        panel.appendChild(titleBar);
+        panel.appendChild(addSection);
+        panel.appendChild(listSection);
+        panel.appendChild(configSection);
+        panel.appendChild(buttonSection);
+        managerModal.appendChild(panel);
+        document.body.appendChild(managerModal);
+
+        // 更新敏感词列表显示
+        function updateWordList() {
+            const words = sensitiveWordManager.getWords();
+            wordList.innerHTML = '';
+            
+            if (words.length === 0) {
+                wordList.innerHTML = '<div style="color: #888; text-align: center;">暂无敏感词</div>';
+                return;
+            }
+
+            words.forEach(word => {
+                const wordItem = document.createElement('div');
+                wordItem.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 5px;
+                    margin: 2px 0;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 3px;
+                `;
+
+                const wordText = document.createElement('span');
+                wordText.textContent = word;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '删除';
+                deleteBtn.style.cssText = `
+                    background: #f44336;
+                    color: white;
+                    border: none;
+                    border-radius: 3px;
+                    padding: 2px 8px;
+                    font-size: 10px;
+                    cursor: pointer;
+                `;
+
+                deleteBtn.onclick = () => {
+                    if (confirm(`确定要删除敏感词"${word}"吗？`)) {
+                        sensitiveWordManager.removeWord(word);
+                        updateWordList();
+                    }
+                };
+
+                wordItem.appendChild(wordText);
+                wordItem.appendChild(deleteBtn);
+                wordList.appendChild(wordItem);
+            });
+        }
+
+        // 添加拖拽功能
+        let isDraggingPanel = false;
+        let currentPanelX;
+        let currentPanelY;
+        let initialPanelX;
+        let initialPanelY;
+        let xPanelOffset = 0;
+        let yPanelOffset = 0;
+        let dragPanelThrottleTimer = null;
+
+        titleBar.addEventListener('mousedown', dragPanelStart);
+        document.addEventListener('mousemove', dragPanel);
+        document.addEventListener('mouseup', dragPanelEnd);
+
+        function dragPanelStart(e) {
+            initialPanelX = e.clientX - xPanelOffset;
+            initialPanelY = e.clientY - yPanelOffset;
+
+            if (e.target === titleBar || titleBar.contains(e.target)) {
+                isDraggingPanel = true;
+                panel.style.willChange = 'transform';
+            }
+        }
+
+        function dragPanel(e) {
+            if (isDraggingPanel) {
+                if (dragPanelThrottleTimer) return;
+                
+                dragPanelThrottleTimer = requestAnimationFrame(() => {
+                    e.preventDefault();
+                    currentPanelX = e.clientX - initialPanelX;
+                    currentPanelY = e.clientY - initialPanelY;
+
+                    xPanelOffset = currentPanelX;
+                    yPanelOffset = currentPanelY;
+
+                    panel.style.transform = `translate3d(${currentPanelX}px, ${currentPanelY}px, 0)`;
+                    dragPanelThrottleTimer = null;
+                });
+            }
+        }
+
+        function dragPanelEnd(e) {
+            initialPanelX = currentPanelX;
+            initialPanelY = currentPanelY;
+            isDraggingPanel = false;
+            if (dragPanelThrottleTimer) {
+                cancelAnimationFrame(dragPanelThrottleTimer);
+                dragPanelThrottleTimer = null;
+            }
+            panel.style.willChange = 'auto';
+        }
+
+        // 绑定事件
+        addBtn.onclick = () => {
+            const word = addInput.value.trim();
+            if (word) {
+                if (sensitiveWordManager.addWord(word)) {
+                    addInput.value = '';
+                    updateWordList();
+                } else {
+                    alert('该敏感词已存在！');
+                }
+            }
+        };
+
+        addInput.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                addBtn.click();
+            }
+        };
+
+        resetBtn.onclick = () => {
+            if (confirm('确定要重置为默认敏感词列表吗？这将清除所有自定义敏感词！')) {
+                sensitiveWordManager.saveWords(sensitiveWordsConfig.words);
+                updateWordList();
+                enableCheckbox.checked = true;
+                caseCheckbox.checked = false;
+                fuzzyCheckbox.checked = true;
+            }
+        };
+
+        saveConfigBtn.onclick = () => {
+            sensitiveWordsConfig.enabled = enableCheckbox.checked;
+            sensitiveWordsConfig.caseSensitive = caseCheckbox.checked;
+            sensitiveWordsConfig.fuzzyMatch = fuzzyCheckbox.checked;
+            
+            // 保存配置到localStorage
+            const config = {
+                words: sensitiveWordManager.getWords(),
+                enabled: sensitiveWordsConfig.enabled,
+                caseSensitive: sensitiveWordsConfig.caseSensitive,
+                fuzzyMatch: sensitiveWordsConfig.fuzzyMatch
+            };
+            localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
+            
+            // 显示保存成功提示
+            showSaveSuccessNotification();
+        };
+
+        closeBtn.onclick = () => {
+            managerModal.style.display = 'none';
+        };
+
+        managerModal.onclick = (e) => {
+            if (e.target === managerModal) {
+                managerModal.style.display = 'none';
+            }
+        };
+
+        // 初始化显示
+        updateWordList();
+    }
+
+    // 显示保存成功通知
+    function showSaveSuccessNotification() {
+        // 检查是否已存在通知
+        let notification = document.getElementById('save-success-notification');
+        if (notification) {
+            notification.remove();
+        }
+
+        // 创建通知元素
+        notification = document.createElement('div');
+        notification.id = 'save-success-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 30000;
+            font-family: 'Microsoft YaHei', sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            border: 2px solid #2e7d32;
+            animation: slideDown 0.3s ease-out;
+        `;
+
+        // 添加CSS动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(-20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+            }
+            @keyframes fadeOut {
+                from {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(-20px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 添加保存位置信息
+        const saveLocation = `
+            <div style="margin-bottom: 8px;">✅ 配置保存成功！</div>
+            <div style="font-size: 12px; opacity: 0.9; line-height: 1.4;">
+                敏感词已保存到浏览器本地存储<br>
+                <span style="color: #ffeb3b;">位置：localStorage['danmu_sensitive_words']</span><br>
+                <span style="font-size: 11px; opacity: 0.8;">数据持久化，刷新页面后仍然有效</span>
+            </div>
+        `;
+
+        notification.innerHTML = saveLocation;
+        document.body.appendChild(notification);
+
+        // 3秒后自动消失
+        setTimeout(() => {
+            if (notification && notification.parentNode) {
+                notification.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (notification && notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, 3000);
+
+        // 点击通知也可以关闭
+        notification.onclick = () => {
+            notification.style.animation = 'fadeOut 0.3s ease-out';
+            setTimeout(() => {
+                if (notification && notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        };
     }
 
     // 保存弹幕记录到文件 - 优化版本
@@ -352,7 +998,7 @@
         normal: { text: '正常显示', color: '#00ff00' }
     };
 
-    // 记录弹幕到文本框 - 优化版本
+    // 记录弹幕到文本框 - 优化版本，支持敏感词高亮
     function logDanmuToBox(content, type) {
         const logBox = domCache.getLogBox();
         
@@ -366,6 +1012,10 @@
         const timestamp = new Date().toLocaleTimeString();
         const config = typeConfig[type] || typeConfig.normal;
 
+        // 检测敏感词并高亮显示
+        const highlightedContent = sensitiveWordManager.highlightSensitiveWords(content);
+        const detectedWords = sensitiveWordManager.detectSensitiveWords(content);
+        
         // 使用DocumentFragment批量操作DOM
         const fragment = document.createDocumentFragment();
         const logEntry = document.createElement('div');
@@ -375,11 +1025,23 @@
             border-left: 3px solid ${config.color};
             background: rgba(255, 255, 255, 0.1);
         `;
-        logEntry.innerHTML = `
+        
+        // 构建弹幕信息显示
+        let danmuInfo = `
             <div style="font-size: 10px; color: #ccc;">${timestamp}</div>
             <div style="color: ${config.color}; font-weight: bold;">[${config.text}]</div>
-            <div>${content}</div>
         `;
+        
+        // 如果有敏感词，添加敏感词提示
+        if (detectedWords.length > 0) {
+            const sensitiveWordsList = detectedWords.map(item => item.word).join(', ');
+            danmuInfo += `<div style="font-size: 9px; color: #ff9800; margin: 2px 0;">⚠️ 检测到敏感词: ${sensitiveWordsList}</div>`;
+        }
+        
+        // 添加弹幕内容（支持HTML高亮）
+        danmuInfo += `<div style="word-break: break-all;">${highlightedContent}</div>`;
+        
+        logEntry.innerHTML = danmuInfo;
         
         fragment.appendChild(logEntry);
         contentArea.appendChild(fragment);
@@ -393,6 +1055,27 @@
         }
     }
 
+
+    // 初始化敏感词配置
+    function initSensitiveWordsConfig() {
+        const saved = localStorage.getItem('danmu_sensitive_words');
+        if (saved) {
+            try {
+                const config = JSON.parse(saved);
+                sensitiveWordsConfig.enabled = config.enabled !== undefined ? config.enabled : true;
+                sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : false;
+                sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : true;
+                if (config.words && Array.isArray(config.words)) {
+                    sensitiveWordsConfig.words = config.words;
+                }
+            } catch (e) {
+                console.warn('解析敏感词配置失败，使用默认配置');
+            }
+        }
+    }
+
+    // 初始化配置
+    initSensitiveWordsConfig();
 
     let windowCtx = self.window;
     if (self.unsafeWindow) {
