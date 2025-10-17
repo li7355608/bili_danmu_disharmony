@@ -1309,7 +1309,16 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `弹幕记录_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+        // 生成本地时区的易读文件名
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const filename = `弹幕记录_${year}年${month}月${day}日_${hours}时${minutes}分${seconds}秒.txt`;
+        a.download = filename;
         a.style.display = 'none'; // 避免闪烁
         document.body.appendChild(a);
         a.click();
