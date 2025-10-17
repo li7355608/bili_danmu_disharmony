@@ -1005,11 +1005,12 @@
             }
         };
 
-        addInput.onkeypress = (e) => {
+        addInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault(); // 防止表单提交等默认行为
                 addBtn.click();
             }
-        };
+        });
 
         resetBtn.onclick = () => {
             if (confirm('确定要重置为默认敏感词列表吗？\n\n这将清除所有自定义敏感词和本地配置！')) {
