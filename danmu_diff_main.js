@@ -30,9 +30,6 @@
     const success_color = "DarkCyan"
     const error_color = "Crimson"
 
-    //此处调整弹幕滚动速度
-    const speed = 0.1
-
     // 默认固定从左侧开始滚动的位置
     const dm_left = '-16%'
 
