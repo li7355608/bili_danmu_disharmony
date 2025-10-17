@@ -402,6 +402,48 @@
             -ms-user-select: text;
         `;
 
+        // 添加自定义滚动条样式
+        const scrollbarStyle = document.createElement('style');
+        scrollbarStyle.textContent = `
+            #danmu-log-content::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            #danmu-log-content::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.1);
+                border-radius: 4px;
+                margin: 2px;
+            }
+            
+            #danmu-log-content::-webkit-scrollbar-thumb {
+                background: linear-gradient(135deg, #00a1d6, #0088cc);
+                border-radius: 4px;
+                border: 1px solid rgba(0, 161, 214, 0.3);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            }
+            
+            #danmu-log-content::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(135deg, #0088cc, #006699);
+                box-shadow: 0 0 8px rgba(0, 161, 214, 0.4);
+                transform: scale(1.1);
+            }
+            
+            #danmu-log-content::-webkit-scrollbar-thumb:active {
+                background: linear-gradient(135deg, #006699, #004466);
+            }
+            
+            #danmu-log-content::-webkit-scrollbar-corner {
+                background: transparent;
+            }
+            
+            /* Firefox 滚动条样式 */
+            #danmu-log-content {
+                scrollbar-width: thin;
+                scrollbar-color: #00a1d6 rgba(0, 0, 0, 0.1);
+            }
+        `;
+        document.head.appendChild(scrollbarStyle);
+
         logBox.appendChild(titleBar);
         logBox.appendChild(contentArea);
         document.body.appendChild(logBox);
@@ -735,6 +777,48 @@
             -moz-user-select: none;
             -ms-user-select: none;
         `;
+
+        // 为敏感词列表添加自定义滚动条样式
+        const sensitiveWordScrollbarStyle = document.createElement('style');
+        sensitiveWordScrollbarStyle.textContent = `
+            #sensitive-word-list::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            #sensitive-word-list::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.2);
+                border-radius: 4px;
+                margin: 2px;
+            }
+            
+            #sensitive-word-list::-webkit-scrollbar-thumb {
+                background: linear-gradient(135deg, #00a1d6, #0088cc);
+                border-radius: 4px;
+                border: 1px solid rgba(0, 161, 214, 0.3);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            }
+            
+            #sensitive-word-list::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(135deg, #0088cc, #006699);
+                box-shadow: 0 0 8px rgba(0, 161, 214, 0.4);
+                transform: scale(1.1);
+            }
+            
+            #sensitive-word-list::-webkit-scrollbar-thumb:active {
+                background: linear-gradient(135deg, #006699, #004466);
+            }
+            
+            #sensitive-word-list::-webkit-scrollbar-corner {
+                background: transparent;
+            }
+            
+            /* Firefox 滚动条样式 */
+            #sensitive-word-list {
+                scrollbar-width: thin;
+                scrollbar-color: #00a1d6 rgba(0, 0, 0, 0.2);
+            }
+        `;
+        document.head.appendChild(sensitiveWordScrollbarStyle);
 
         listSection.appendChild(listLabel);
         listSection.appendChild(wordList);
