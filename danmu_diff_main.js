@@ -202,7 +202,7 @@
             right: 20px;
             width: 320px;
             height: 250px;
-            background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
             border: 2px solid #00a1d6;
             border-radius: 12px;
@@ -213,7 +213,6 @@
             overflow: hidden;
             resize: both;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
