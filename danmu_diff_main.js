@@ -383,6 +383,11 @@
         let managerModal = document.getElementById('sensitive-word-manager');
         if (managerModal) {
             managerModal.style.display = 'block';
+            // 每次打开时清空输入框
+            const addInput = managerModal.querySelector('input[type="text"]');
+            if (addInput) {
+                addInput.value = '';
+            }
             return;
         }
 
@@ -405,9 +410,9 @@
         // 创建管理面板
         const panel = document.createElement('div');
         panel.style.cssText = `
-            background: #2c2c2c;
+            background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
             border: 2px solid #00a1d6;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 20px;
             width: 500px;
             max-height: 80vh;
@@ -415,6 +420,12 @@
             color: white;
             font-family: 'Microsoft YaHei', sans-serif;
             position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
 
         // 标题栏
@@ -425,9 +436,16 @@
             align-items: center;
             margin-bottom: 15px;
             padding-bottom: 10px;
-            border-bottom: 1px solid #00a1d6;
+            border-bottom: 2px solid #00a1d6;
             cursor: move;
             user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            background: linear-gradient(90deg, rgba(0, 161, 214, 0.1), transparent);
+            border-radius: 8px 8px 0 0;
+            padding: 10px 15px;
+            margin: -20px -20px 15px -20px;
         `;
 
         const title = document.createElement('h3');
@@ -437,14 +455,30 @@
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '×';
         closeBtn.style.cssText = `
-            background: #ff6b6b;
+            background: linear-gradient(135deg, #ff6b6b, #e53e3e);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 5px 10px;
+            border-radius: 6px;
+            padding: 8px 12px;
             font-size: 16px;
             cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 添加悬停效果
+        closeBtn.onmouseenter = () => {
+            closeBtn.style.transform = 'scale(1.05)';
+            closeBtn.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.5)';
+        };
+        closeBtn.onmouseleave = () => {
+            closeBtn.style.transform = 'scale(1)';
+            closeBtn.style.boxShadow = '0 2px 8px rgba(255, 107, 107, 0.3)';
+        };
 
         titleBar.appendChild(title);
         titleBar.appendChild(closeBtn);
@@ -453,9 +487,15 @@
         const addSection = document.createElement('div');
         addSection.style.cssText = `
             margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+            border-radius: 8px;
+            border: 1px solid rgba(0, 161, 214, 0.3);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
 
         const addLabel = document.createElement('label');
@@ -468,24 +508,59 @@
         addInput.placeholder = '输入要添加的敏感词';
         addInput.style.cssText = `
             width: 70%;
-            padding: 5px;
-            border: 1px solid #555;
-            border-radius: 3px;
-            background: #333;
+            padding: 10px 15px;
+            border: 2px solid rgba(0, 161, 214, 0.5);
+            border-radius: 8px;
+            background: linear-gradient(135deg, #333, #2a2a2a);
             color: white;
             margin-right: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         `;
+        
+        // 输入框焦点效果
+        addInput.onfocus = () => {
+            addInput.style.borderColor = '#00a1d6';
+            addInput.style.boxShadow = '0 0 0 3px rgba(0, 161, 214, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+        addInput.onblur = () => {
+            addInput.style.borderColor = 'rgba(0, 161, 214, 0.5)';
+            addInput.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
 
         const addBtn = document.createElement('button');
         addBtn.textContent = '添加';
         addBtn.style.cssText = `
-            background: #4CAF50;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 5px 15px;
+            border-radius: 8px;
+            padding: 10px 20px;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 添加按钮悬停效果
+        addBtn.onmouseenter = () => {
+            addBtn.style.transform = 'translateY(-2px)';
+            addBtn.style.boxShadow = '0 6px 16px rgba(76, 175, 80, 0.4)';
+        };
+        addBtn.onmouseleave = () => {
+            addBtn.style.transform = 'translateY(0)';
+            addBtn.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
+        };
 
         addSection.appendChild(addLabel);
         addSection.appendChild(addInput);
@@ -507,10 +582,15 @@
         wordList.style.cssText = `
             max-height: 200px;
             overflow-y: auto;
-            border: 1px solid #555;
-            border-radius: 3px;
-            padding: 10px;
-            background: #333;
+            border: 2px solid rgba(0, 161, 214, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            background: linear-gradient(135deg, #333, #2a2a2a);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
 
         listSection.appendChild(listLabel);
@@ -520,9 +600,15 @@
         const configSection = document.createElement('div');
         configSection.style.cssText = `
             margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+            border-radius: 8px;
+            border: 1px solid rgba(0, 161, 214, 0.3);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
 
         const configLabel = document.createElement('label');
@@ -581,24 +667,60 @@
         const resetBtn = document.createElement('button');
         resetBtn.textContent = '重置默认';
         resetBtn.style.cssText = `
-            background: #ff9800;
+            background: linear-gradient(135deg, #ff9800, #f57c00);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 8px 15px;
+            border-radius: 8px;
+            padding: 12px 20px;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 重置按钮悬停效果
+        resetBtn.onmouseenter = () => {
+            resetBtn.style.transform = 'translateY(-2px)';
+            resetBtn.style.boxShadow = '0 6px 16px rgba(255, 152, 0, 0.4)';
+        };
+        resetBtn.onmouseleave = () => {
+            resetBtn.style.transform = 'translateY(0)';
+            resetBtn.style.boxShadow = '0 4px 12px rgba(255, 152, 0, 0.3)';
+        };
 
         const saveConfigBtn = document.createElement('button');
         saveConfigBtn.textContent = '保存配置';
         saveConfigBtn.style.cssText = `
-            background: #2196F3;
+            background: linear-gradient(135deg, #2196F3, #1976d2);
             color: white;
             border: none;
-            border-radius: 3px;
-            padding: 8px 15px;
+            border-radius: 8px;
+            padding: 12px 20px;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         `;
+        
+        // 保存按钮悬停效果
+        saveConfigBtn.onmouseenter = () => {
+            saveConfigBtn.style.transform = 'translateY(-2px)';
+            saveConfigBtn.style.boxShadow = '0 6px 16px rgba(33, 150, 243, 0.4)';
+        };
+        saveConfigBtn.onmouseleave = () => {
+            saveConfigBtn.style.transform = 'translateY(0)';
+            saveConfigBtn.style.boxShadow = '0 4px 12px rgba(33, 150, 243, 0.3)';
+        };
 
         buttonSection.appendChild(resetBtn);
         buttonSection.appendChild(saveConfigBtn);
@@ -628,11 +750,30 @@
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    padding: 5px;
-                    margin: 2px 0;
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 3px;
+                    padding: 12px 15px;
+                    margin: 8px 0;
+                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+                    border-radius: 8px;
+                    border: 1px solid rgba(0, 161, 214, 0.2);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    transition: all 0.2s ease;
+                    user-select: none;
+                    -webkit-user-select: none;
+                    -moz-user-select: none;
+                    -ms-user-select: none;
                 `;
+                
+                // 列表项悬停效果
+                wordItem.onmouseenter = () => {
+                    wordItem.style.transform = 'translateX(5px)';
+                    wordItem.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                    wordItem.style.borderColor = 'rgba(0, 161, 214, 0.5)';
+                };
+                wordItem.onmouseleave = () => {
+                    wordItem.style.transform = 'translateX(0)';
+                    wordItem.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+                    wordItem.style.borderColor = 'rgba(0, 161, 214, 0.2)';
+                };
 
                 const wordText = document.createElement('span');
                 wordText.textContent = word;
@@ -640,19 +781,40 @@
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '删除';
                 deleteBtn.style.cssText = `
-                    background: #f44336;
+                    background: linear-gradient(135deg, #f44336, #d32f2f);
                     color: white;
                     border: none;
-                    border-radius: 3px;
-                    padding: 2px 8px;
-                    font-size: 10px;
+                    border-radius: 6px;
+                    padding: 6px 12px;
+                    font-size: 12px;
+                    font-weight: bold;
                     cursor: pointer;
+                    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
+                    transition: all 0.2s ease;
+                    user-select: none;
+                    -webkit-user-select: none;
+                    -moz-user-select: none;
+                    -ms-user-select: none;
                 `;
+                
+                // 删除按钮悬停效果
+                deleteBtn.onmouseenter = () => {
+                    deleteBtn.style.transform = 'scale(1.05)';
+                    deleteBtn.style.boxShadow = '0 4px 8px rgba(244, 67, 54, 0.4)';
+                };
+                deleteBtn.onmouseleave = () => {
+                    deleteBtn.style.transform = 'scale(1)';
+                    deleteBtn.style.boxShadow = '0 2px 6px rgba(244, 67, 54, 0.3)';
+                };
 
                 deleteBtn.onclick = () => {
                     if (confirm(`确定要删除敏感词"${word}"吗？`)) {
-                        sensitiveWordManager.removeWord(word);
-                        updateWordList();
+                        if (sensitiveWordManager.removeWord(word)) {
+                            updateWordList();
+                            showNotification('敏感词删除成功！', 'success');
+                        } else {
+                            showNotification('删除失败！', 'error');
+                        }
                     }
                 };
 
@@ -718,13 +880,17 @@
         // 绑定事件
         addBtn.onclick = () => {
             const word = addInput.value.trim();
-            if (word) {
-                if (sensitiveWordManager.addWord(word)) {
-                    addInput.value = '';
-                    updateWordList();
-                } else {
-                    alert('该敏感词已存在！');
-                }
+            if (!word) {
+                showNotification('内容不能为空！', 'error');
+                return;
+            }
+            
+            if (sensitiveWordManager.addWord(word)) {
+                addInput.value = '';
+                updateWordList();
+                showNotification('敏感词添加成功！', 'success');
+            } else {
+                showNotification('该敏感词已存在！', 'warning');
             }
         };
 
@@ -741,6 +907,7 @@
                 enableCheckbox.checked = true;
                 caseCheckbox.checked = false;
                 fuzzyCheckbox.checked = true;
+                showNotification('重置默认设置成功！', 'success');
             }
         };
 
@@ -762,13 +929,20 @@
             showSaveSuccessNotification();
         };
 
+        // 清空输入框的函数
+        function clearInput() {
+            addInput.value = '';
+        }
+
         closeBtn.onclick = () => {
             managerModal.style.display = 'none';
+            clearInput();
         };
 
         managerModal.onclick = (e) => {
             if (e.target === managerModal) {
                 managerModal.style.display = 'none';
+                clearInput();
             }
         };
 
@@ -776,23 +950,47 @@
         updateWordList();
     }
 
-    // 显示保存成功通知
-    function showSaveSuccessNotification() {
+    // 统一的通知函数
+    function showNotification(message, type = 'info', duration = 3000) {
         // 检查是否已存在通知
-        let notification = document.getElementById('save-success-notification');
+        let notification = document.getElementById('unified-notification');
         if (notification) {
             notification.remove();
         }
 
+        // 根据类型设置样式
+        let bgColor, borderColor, icon;
+        switch (type) {
+            case 'success':
+                bgColor = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                borderColor = '#2e7d32';
+                icon = '✅';
+                break;
+            case 'error':
+                bgColor = 'linear-gradient(135deg, #f44336, #d32f2f)';
+                borderColor = '#b71c1c';
+                icon = '❌';
+                break;
+            case 'warning':
+                bgColor = 'linear-gradient(135deg, #ff9800, #f57c00)';
+                borderColor = '#e65100';
+                icon = '⚠️';
+                break;
+            default:
+                bgColor = 'linear-gradient(135deg, #2196F3, #1976d2)';
+                borderColor = '#0d47a1';
+                icon = 'ℹ️';
+        }
+
         // 创建通知元素
         notification = document.createElement('div');
-        notification.id = 'save-success-notification';
+        notification.id = 'unified-notification';
         notification.style.cssText = `
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, #4CAF50, #45a049);
+            background: ${bgColor};
             color: white;
             padding: 15px 25px;
             border-radius: 8px;
@@ -802,50 +1000,46 @@
             font-size: 14px;
             font-weight: bold;
             text-align: center;
-            border: 2px solid #2e7d32;
+            border: 2px solid ${borderColor};
             animation: slideDown 0.3s ease-out;
+            user-select: none;
+            pointer-events: auto;
+            cursor: pointer;
         `;
 
-        // 添加CSS动画
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideDown {
-                from {
-                    opacity: 0;
-                    transform: translateX(-50%) translateY(-20px);
+        // 添加CSS动画（如果还没有添加）
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(-20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
                 }
-                to {
-                    opacity: 1;
-                    transform: translateX(-50%) translateY(0);
+                @keyframes fadeOut {
+                    from {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                    to {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(-20px);
+                    }
                 }
-            }
-            @keyframes fadeOut {
-                from {
-                    opacity: 1;
-                    transform: translateX(-50%) translateY(0);
-                }
-                to {
-                    opacity: 0;
-                    transform: translateX(-50%) translateY(-20px);
-                }
-            }
-        `;
-        document.head.appendChild(style);
+            `;
+            document.head.appendChild(style);
+        }
 
-        // 添加保存位置信息
-        const saveLocation = `
-            <div style="margin-bottom: 8px;">✅ 配置保存成功！</div>
-            <div style="font-size: 12px; opacity: 0.9; line-height: 1.4;">
-                敏感词已保存到浏览器本地存储<br>
-                <span style="color: #ffeb3b;">位置：localStorage['danmu_sensitive_words']</span><br>
-                <span style="font-size: 11px; opacity: 0.8;">数据持久化，刷新页面后仍然有效</span>
-            </div>
-        `;
-
-        notification.innerHTML = saveLocation;
+        notification.innerHTML = `${icon} ${message}`;
         document.body.appendChild(notification);
 
-        // 3秒后自动消失
+        // 自动消失
         setTimeout(() => {
             if (notification && notification.parentNode) {
                 notification.style.animation = 'fadeOut 0.3s ease-out';
@@ -855,7 +1049,7 @@
                     }
                 }, 300);
             }
-        }, 3000);
+        }, duration);
 
         // 点击通知也可以关闭
         notification.onclick = () => {
@@ -866,6 +1060,11 @@
                 }
             }, 300);
         };
+    }
+
+    // 显示保存成功通知（保持兼容性）
+    function showSaveSuccessNotification() {
+        showNotification('配置保存成功！', 'success', 5000);
     }
 
     // 保存弹幕记录到文件 - 优化版本
