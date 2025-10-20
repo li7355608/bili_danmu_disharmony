@@ -52,22 +52,7 @@
 
     // 敏感词管理器初始化配置
     const sensitiveWordsConfig = {
-        // 默认敏感词列表
-        words: [
-            '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
-            '政治', '色情', '暴力', '赌博', '毒品', '诈骗', '传销', '邪教',
-            '反动', '分裂', '恐怖', '极端', '仇恨', '歧视', '侮辱', '诽谤'
-        ],
-        // 敏感词高亮样式
-        highlightStyle: {
-            backgroundColor: '#ffeb3b',
-            color: '#d32f2f',
-            fontWeight: 'bold',
-            padding: '1px 2px',
-            borderRadius: '2px',
-            textShadow: '0 0 2px rgba(255, 0, 0, 0.3)'
-        },
-        // 默认配置参数，仅在初始化时有效
+        // 默认配置参数，仅在初始化时有效，初始化配置修改此处
         defaultConfig: {
             // 是否启用敏感词检测
             enabled: true,
@@ -78,9 +63,25 @@
             // 是否默认显示弹幕记录板
             showLogBoxByDefault: true,
             // 弹幕记录板容量限制
-            logBoxCapacity: 50
+            logBoxCapacity: 50,
+            // 默认敏感词列表
+            words: [
+                '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
+                '政治', '色情', '暴力', '赌博', '毒品', '诈骗', '传销', '邪教',
+                '反动', '分裂', '恐怖', '极端', '仇恨', '歧视', '侮辱', '诽谤'
+            ]
+        },
+        // 敏感词高亮样式
+        highlightStyle: {
+            backgroundColor: '#ffeb3b',
+            color: '#d32f2f',
+            fontWeight: 'bold',
+            padding: '1px 2px',
+            borderRadius: '2px',
+            textShadow: '0 0 2px rgba(255, 0, 0, 0.3)'
         },
         // 当前运行时配置（用户自定义，会从本地存储中更新，修改默认参数请勿修改此处）
+        words: [],
         enabled: true,
         caseSensitive: false,
         fuzzyMatch: true,
@@ -96,14 +97,14 @@
             if (saved) {
                 try {
                     const config = JSON.parse(saved);
-                    return config.words || sensitiveWordsConfig.words;
+                    return config.words || sensitiveWordsConfig.defaultConfig.words;
                 } catch (e) {
                     console.warn('解析敏感词配置失败，使用默认配置');
-                    return sensitiveWordsConfig.words;
+                    return sensitiveWordsConfig.defaultConfig.words;
                 }
             }
-            // 如果localStorage中没有数据，返回配置对象中的默认词列表
-            return sensitiveWordsConfig.words;
+            // 如果localStorage中没有数据，返回初始初始化的词汇配置
+            return sensitiveWordsConfig.defaultConfig.words;
         },
 
         // 保存敏感词列表
@@ -1213,7 +1214,7 @@
                 sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
 
                 // 使用配置对象中的默认词列表，避免重复定义
-                const defaultWords = [...sensitiveWordsConfig.words];
+                const defaultWords = [...sensitiveWordsConfig.defaultConfig.words];
                 
                 // 重置敏感词管理器到默认状态
                 sensitiveWordManager.saveWords(defaultWords);
@@ -1741,6 +1742,7 @@
             sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
             sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
             sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
+            sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
         }
     }
 
