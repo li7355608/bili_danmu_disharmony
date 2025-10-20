@@ -76,13 +76,16 @@
             // 是否启用模糊匹配
             fuzzyMatch: true,
             // 是否默认显示弹幕记录板
-            showLogBoxByDefault: true
+            showLogBoxByDefault: true,
+            // 弹幕记录板容量限制
+            logBoxCapacity: 50
         },
         // 当前运行时配置（用户自定义，会从本地存储中更新，修改默认参数请勿修改此处）
         enabled: true,
         caseSensitive: false,
         fuzzyMatch: true,
-        showLogBoxByDefault: true
+        showLogBoxByDefault: true,
+        logBoxCapacity: 50
     };
 
     // 敏感词管理器
@@ -110,7 +113,8 @@
                 enabled: sensitiveWordsConfig.enabled,
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
-                showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault
+                showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
+                logBoxCapacity: sensitiveWordsConfig.logBoxCapacity
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
         },
@@ -544,13 +548,15 @@
         caseCheckbox: null,
         fuzzyCheckbox: null,
         showLogBoxCheckbox: null,
+        capacityInput: null,
         
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
             this.showLogBoxCheckbox = showLogBoxCheckbox;
+            this.capacityInput = capacityInput;
         },
         
         // 重置配置选项UI到默认状态
@@ -559,6 +565,7 @@
             if (this.caseCheckbox) this.caseCheckbox.checked = sensitiveWordsConfig.defaultConfig.caseSensitive;
             if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
             if (this.showLogBoxCheckbox) this.showLogBoxCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+            if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         }
     };
 
@@ -883,6 +890,51 @@
         showLogBoxLabel.textContent = '默认显示弹幕记录板（取消则发送弹幕后展示）';
         showLogBoxLabel.style.marginLeft = '5px';
 
+        // 添加容量配置
+        const capacityLabel = document.createElement('label');
+        capacityLabel.textContent = '弹幕记录板容量:';
+        capacityLabel.style.display = 'block';
+        capacityLabel.style.marginTop = '10px';
+        capacityLabel.style.marginBottom = '5px';
+
+        const capacityInput = document.createElement('input');
+        capacityInput.type = 'number';
+        capacityInput.id = 'logbox-capacity-input';
+        capacityInput.min = '10';
+        capacityInput.max = '1000';
+        capacityInput.value = sensitiveWordsConfig.logBoxCapacity;
+        capacityInput.style.cssText = `
+            width: 80px;
+            padding: 8px 12px;
+            border: 2px solid rgba(0, 161, 214, 0.5);
+            border-radius: 6px;
+            background: linear-gradient(135deg, #333, #2a2a2a);
+            color: white;
+            margin-right: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        `;
+        
+        // 输入框焦点效果
+        capacityInput.onfocus = () => {
+            capacityInput.style.borderColor = '#00a1d6';
+            capacityInput.style.boxShadow = '0 0 0 3px rgba(0, 161, 214, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+        capacityInput.onblur = () => {
+            capacityInput.style.borderColor = 'rgba(0, 161, 214, 0.5)';
+            capacityInput.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+
+        const capacityUnitLabel = document.createElement('span');
+        capacityUnitLabel.textContent = '条记录';
+        capacityUnitLabel.style.color = '#888';
+        capacityUnitLabel.style.fontSize = '12px';
+
         configSection.appendChild(configLabel);
         configSection.appendChild(enableCheckbox);
         configSection.appendChild(enableLabel);
@@ -895,9 +947,13 @@
         configSection.appendChild(document.createElement('br'));
         configSection.appendChild(showLogBoxCheckbox);
         configSection.appendChild(showLogBoxLabel);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(capacityLabel);
+        configSection.appendChild(capacityInput);
+        configSection.appendChild(capacityUnitLabel);
         
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -1154,6 +1210,7 @@
                 sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
                 sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
                 sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+                sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
 
                 // 使用配置对象中的默认词列表，避免重复定义
                 const defaultWords = [...sensitiveWordsConfig.words];
@@ -1180,13 +1237,23 @@
             sensitiveWordsConfig.fuzzyMatch = fuzzyCheckbox.checked;
             sensitiveWordsConfig.showLogBoxByDefault = showLogBoxCheckbox.checked;
             
+            // 验证并设置容量值
+            const capacityValue = parseInt(capacityInput.value);
+            if (capacityValue >= 10 && capacityValue <= 1000) {
+                sensitiveWordsConfig.logBoxCapacity = capacityValue;
+            } else {
+                showNotification('容量值必须在10-1000之间！', 'warning', 3000);
+                return;
+            }
+            
             // 保存配置到localStorage
             const config = {
                 words: sensitiveWordManager.getWords(),
                 enabled: sensitiveWordsConfig.enabled,
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
-                showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault
+                showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
+                logBoxCapacity: sensitiveWordsConfig.logBoxCapacity
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
             
@@ -1640,8 +1707,9 @@
 
         // 优化记录数量限制 - 批量删除旧记录
         const entries = contentArea.children;
-        if (entries.length > 50) {
-            const toRemove = Array.from(entries).slice(0, entries.length - 50);
+        const maxCapacity = sensitiveWordsConfig.logBoxCapacity || 50;
+        if (entries.length > maxCapacity) {
+            const toRemove = Array.from(entries).slice(0, entries.length - maxCapacity);
             toRemove.forEach(entry => entry.remove());
         }
     }
@@ -1657,6 +1725,7 @@
                 sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : sensitiveWordsConfig.defaultConfig.caseSensitive;
                 sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : sensitiveWordsConfig.defaultConfig.fuzzyMatch;
                 sensitiveWordsConfig.showLogBoxByDefault = config.showLogBoxByDefault !== undefined ? config.showLogBoxByDefault : sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+                sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 if (config.words && Array.isArray(config.words)) {
                     sensitiveWordsConfig.words = config.words;
                 }
@@ -1671,6 +1740,7 @@
             sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
             sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
             sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+            sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         }
     }
 
