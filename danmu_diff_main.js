@@ -1711,7 +1711,7 @@
 
         // 优化记录数量限制 - 批量删除旧记录
         const entries = contentArea.children;
-        const maxCapacity = sensitiveWordsConfig.logBoxCapacity || 50;
+        const maxCapacity = sensitiveWordsConfig.logBoxCapacity || sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         if (entries.length > maxCapacity) {
             const toRemove = Array.from(entries).slice(0, entries.length - maxCapacity);
             toRemove.forEach(entry => entry.remove());
