@@ -89,6 +89,16 @@
         logBoxCapacity: 50
     };
 
+    // 重置所有选项到默认配置
+    function resetToDefaultConfig() {
+        sensitiveWordsConfig.enabled = sensitiveWordsConfig.defaultConfig.enabled;
+        sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
+        sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
+        sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+        sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
+        sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
+    }
+
     // 敏感词管理器
     const sensitiveWordManager = {
         // 获取敏感词列表
@@ -1207,17 +1217,10 @@
                 localStorage.removeItem('danmu_sensitive_words');
                 
                 // 重置敏感词配置对象到默认状态
-                sensitiveWordsConfig.enabled = sensitiveWordsConfig.defaultConfig.enabled;
-                sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
-                sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
-                sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
-                sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
+                resetToDefaultConfig()
 
-                // 使用配置对象中的默认词列表，避免重复定义
-                const defaultWords = [...sensitiveWordsConfig.defaultConfig.words];
-                
                 // 重置敏感词管理器到默认状态
-                sensitiveWordManager.saveWords(defaultWords);
+                sensitiveWordManager.saveWords(sensitiveWordsConfig.words);
                 
                 // 重置配置选项UI到默认状态
                 configUI.resetToDefault();
@@ -1737,12 +1740,7 @@
             }
         } else {
             // 如果没有保存的配置，确保使用默认值
-            sensitiveWordsConfig.enabled = sensitiveWordsConfig.defaultConfig.enabled;
-            sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
-            sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
-            sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
-            sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
-            sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
+            resetToDefaultConfig()
         }
     }
 
