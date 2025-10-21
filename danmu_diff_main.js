@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      2.2
+// @version      3.0
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -64,6 +64,8 @@
             showLogBoxByDefault: true,
             // 弹幕记录板容量限制
             logBoxCapacity: 50,
+            // 默认导出格式：'txt' 或 'csv'
+            exportFormat: 'csv',
             // 默认敏感词列表
             words: [
                 '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
@@ -86,7 +88,8 @@
         caseSensitive: false,
         fuzzyMatch: true,
         showLogBoxByDefault: true,
-        logBoxCapacity: 50
+        logBoxCapacity: 50,
+        exportFormat: 'csv'
     };
 
     // 重置所有选项到默认配置
@@ -96,6 +99,7 @@
         sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
         sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
+        sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
     }
 
@@ -125,7 +129,8 @@
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
-                logBoxCapacity: sensitiveWordsConfig.logBoxCapacity
+                logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
+                exportFormat: sensitiveWordsConfig.exportFormat
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
         },
@@ -463,6 +468,9 @@
         logBox.appendChild(contentArea);
         document.body.appendChild(logBox);
 
+        // 更新保存按钮文本显示当前导出格式
+        updateSaveButtonText();
+
         // 绑定事件
         clearBtn.onclick = () => {
             // 检查是否有记录
@@ -560,14 +568,16 @@
         fuzzyCheckbox: null,
         showLogBoxCheckbox: null,
         capacityInput: null,
+        exportFormatSelect: null,
         
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput, exportFormatSelect) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
             this.showLogBoxCheckbox = showLogBoxCheckbox;
             this.capacityInput = capacityInput;
+            this.exportFormatSelect = exportFormatSelect;
         },
         
         // 重置配置选项UI到默认状态
@@ -577,6 +587,7 @@
             if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
             if (this.showLogBoxCheckbox) this.showLogBoxCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
             if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
+            if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
         }
     };
 
@@ -1008,6 +1019,61 @@
         capacityUnitLabel.style.color = '#888';
         capacityUnitLabel.style.fontSize = '12px';
 
+        // 添加导出格式配置
+        const exportFormatLabel = document.createElement('label');
+        exportFormatLabel.textContent = '导出格式:';
+        exportFormatLabel.style.display = 'block';
+        exportFormatLabel.style.marginTop = '15px';
+        exportFormatLabel.style.marginBottom = '5px';
+
+        const exportFormatSelect = document.createElement('select');
+        exportFormatSelect.id = 'export-format-select';
+        exportFormatSelect.value = sensitiveWordsConfig.exportFormat;
+        exportFormatSelect.style.cssText = `
+            width: 120px;
+            padding: 8px 12px;
+            border: 2px solid rgba(0, 161, 214, 0.5);
+            border-radius: 6px;
+            background: linear-gradient(135deg, #333, #2a2a2a);
+            color: white;
+            margin-right: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        `;
+        
+        // 添加选项
+        const txtOption = document.createElement('option');
+        txtOption.value = 'txt';
+        txtOption.textContent = '📄 TXT格式';
+        
+        const csvOption = document.createElement('option');
+        csvOption.value = 'csv';
+        csvOption.textContent = '📊 CSV格式';
+        
+        exportFormatSelect.appendChild(txtOption);
+        exportFormatSelect.appendChild(csvOption);
+        
+        // 选择器焦点效果
+        exportFormatSelect.onfocus = () => {
+            exportFormatSelect.style.borderColor = '#00a1d6';
+            exportFormatSelect.style.boxShadow = '0 0 0 3px rgba(0, 161, 214, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+        exportFormatSelect.onblur = () => {
+            exportFormatSelect.style.borderColor = 'rgba(0, 161, 214, 0.5)';
+            exportFormatSelect.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+
+        const exportFormatDesc = document.createElement('span');
+        exportFormatDesc.textContent = 'TXT: 传统文本格式 | CSV: 表格数据格式';
+        exportFormatDesc.style.color = '#888';
+        exportFormatDesc.style.fontSize = '11px';
+        exportFormatDesc.style.marginLeft = '10px';
+
         configSection.appendChild(configLabel);
         configSection.appendChild(enableCheckbox);
         configSection.appendChild(enableLabel);
@@ -1024,9 +1090,13 @@
         configSection.appendChild(capacityLabel);
         configSection.appendChild(capacityInput);
         configSection.appendChild(capacityUnitLabel);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(exportFormatLabel);
+        configSection.appendChild(exportFormatSelect);
+        configSection.appendChild(exportFormatDesc);
         
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput, exportFormatSelect);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -1302,6 +1372,7 @@
             sensitiveWordsConfig.caseSensitive = caseCheckbox.checked;
             sensitiveWordsConfig.fuzzyMatch = fuzzyCheckbox.checked;
             sensitiveWordsConfig.showLogBoxByDefault = showLogBoxCheckbox.checked;
+            sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
             
             // 验证并设置容量值
             const capacityValue = parseInt(capacityInput.value);
@@ -1319,7 +1390,8 @@
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
-                logBoxCapacity: sensitiveWordsConfig.logBoxCapacity
+                logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
+                exportFormat: sensitiveWordsConfig.exportFormat
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
             
@@ -1343,6 +1415,9 @@
             
             // 显示保存成功提示
             showSaveSuccessNotification();
+            
+            // 更新保存按钮文本
+            updateSaveButtonText();
         };
 
         // 清空输入框的函数
@@ -1539,8 +1614,41 @@
         };
     }
 
-    // 保存弹幕记录到文件 - 优化版本
-    function saveDanmuLogs(contentArea, saveBtn) {
+    // CSV转义函数 - 处理CSV中的特殊字符
+    function escapeCsvField(field) {
+        if (field === null || field === undefined) return '';
+        
+        const str = String(field);
+        // 如果包含逗号、引号或换行符，需要用引号包围并转义内部引号
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+    }
+
+    // 格式化时间戳为更友好的格式
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+    }
+
+    // 生成进度条可视化
+    function generateProgressBar(current, total, length = 20) {
+        if (total === 0) return '█'.repeat(length);
+        const filled = Math.round((current / total) * length);
+        return '█'.repeat(filled) + '░'.repeat(length - filled);
+    }
+
+    // 保存弹幕记录到TXT文件 - 原纯文本文件版本
+    function saveDanmuLogsToTxt(contentArea, saveBtn) {
         const entries = contentArea.children;
         if (entries.length === 0) {
             showNotification('没有弹幕记录可保存！', 'warning', 3000);
@@ -1704,11 +1812,292 @@
         const originalText = saveBtn.textContent;
         saveBtn.textContent = '已保存';
         saveBtn.style.background = 'linear-gradient(135deg, #2196F3, #1976d2)';
-        showNotification('弹幕记录保存成功！', 'success', 2000);
+        showNotification('弹幕记录TXT文件保存成功！', 'success', 2000);
         setTimeout(() => {
             saveBtn.textContent = originalText;
             saveBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
         }, 2000);
+    }
+
+    // 保存弹幕记录到CSV文件 - 美化版本
+    function saveDanmuLogsToCsv(contentArea, saveBtn) {
+        const entries = contentArea.children;
+        if (entries.length === 0) {
+            showNotification('没有弹幕记录可保存！', 'warning', 3000);
+            return;
+        }
+
+        // 显示导出进度
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '导出中...';
+        saveBtn.style.background = 'linear-gradient(135deg, #ff9800, #f57c00)';
+        saveBtn.disabled = true;
+
+        // 使用setTimeout让UI更新
+        setTimeout(() => {
+            try {
+                const titleInfo = processPageTitle(document.title);
+                const saveTime = new Date();
+                const formattedSaveTime = formatTimestamp(saveTime);
+                
+                // 美化CSV表头 - 添加更多有用信息
+                const csvRows = [
+                    // 文件信息头部
+                    ['弹幕反诈与防河蟹 - 数据导出报告', '', '', '', '', '', ''],
+                    ['导出时间', formattedSaveTime, '', '', '', '', ''],
+                    ['直播名称', titleInfo.streamName || '未知', '', '', '', '', ''],
+                    ['主播名称', titleInfo.streamer || '未知', '', '', '', '', ''],
+                    ['记录总数', entries.length + ' 条', '', '', '', '', ''],
+                    ['', '', '', '', '', '', ''], // 空行分隔
+                    
+                    // 数据表头
+                    ['序号', '发送时间', '弹幕状态', '弹幕内容', '敏感词检测', '内容长度', '备注']
+                ];
+
+                // 统计信息
+                let systemCount = 0;
+                let userCount = 0;
+                let normalCount = 0;
+                let totalLength = 0;
+
+                // 遍历弹幕记录并转换为美化CSV格式
+                Array.from(entries).forEach((entry, index) => {
+                    const timeDiv = entry.querySelector('div:nth-child(1)');
+                    const typeDiv = entry.querySelector('div:nth-child(2)');
+                    
+                    if (!timeDiv || !typeDiv) return;
+                    
+                    const type = typeDiv.textContent;
+                    const time = timeDiv.textContent;
+                    
+                    // 检查是否有敏感词div（第3个div）
+                    const sensitiveDiv = entry.querySelector('div:nth-child(3)');
+                    let contentDiv, sensitiveWordsInfo = '';
+                    
+                    if (sensitiveDiv && sensitiveDiv.textContent.includes('检测到敏感词')) {
+                        // 有敏感词的情况：第3个div是敏感词，第4个div是内容
+                        contentDiv = entry.querySelector('div:nth-child(4)');
+                        sensitiveWordsInfo = sensitiveDiv.textContent.replace('⚠️ 检测到敏感词: ', '');
+                    } else {
+                        // 没有敏感词的情况：第3个div就是内容
+                        contentDiv = entry.querySelector('div:nth-child(3)');
+                    }
+                    
+                    if (!contentDiv) return;
+                    
+                    // 获取弹幕内容，需要去除HTML标签但保留文本内容
+                    let content = contentDiv.innerHTML;
+                    // 去除HTML标签，保留纯文本内容
+                    content = content.replace(/<[^>]*>/g, '');
+
+                    // 统计数量和长度
+                    if (type.includes('系统屏蔽')) {
+                        systemCount++;
+                    } else if (type.includes('主播屏蔽')) {
+                        userCount++;
+                    } else if (type.includes('正常显示')) {
+                        normalCount++;
+                    }
+                    totalLength += content.length;
+
+                    // 美化类型标识
+                    let typeLabel, statusIcon, remark = '';
+                    if (type.includes('系统屏蔽')) {
+                        typeLabel = '🚫 系统屏蔽';
+                        statusIcon = '❌';
+                        remark = '被系统自动过滤';
+                    } else if (type.includes('主播屏蔽')) {
+                        typeLabel = '⚠️ 主播屏蔽';
+                        statusIcon = '⚠️';
+                        remark = '被主播手动删除';
+                    } else {
+                        typeLabel = '✅ 正常显示';
+                        statusIcon = '✅';
+                        remark = '成功发送并显示';
+                    }
+
+                    // 敏感词检测结果美化
+                    let sensitiveResult = '';
+                    if (sensitiveWordsInfo) {
+                        const wordCount = sensitiveWordsInfo.split(',').length;
+                        sensitiveResult = `🔍 检测到 ${wordCount} 个敏感词: ${sensitiveWordsInfo}`;
+                    } else {
+                        sensitiveResult = '✅ 无敏感词';
+                    }
+
+                    // 添加美化CSV行数据
+                    csvRows.push([
+                        index + 1, // 序号
+                        time, // 发送时间
+                        typeLabel, // 弹幕状态
+                        content, // 弹幕内容
+                        sensitiveResult, // 敏感词检测
+                        content.length + ' 字符', // 内容长度
+                        remark // 备注
+                    ]);
+                });
+
+                // 添加美化统计信息区域
+                csvRows.push([]); // 空行分隔
+                csvRows.push(['📊 数据统计与分析', '', '', '', '', '', '']);
+                csvRows.push(['', '', '', '', '', '', '']);
+                
+                // 详细统计
+                const total = entries.length;
+                const systemPercent = total > 0 ? Math.round((systemCount / total) * 100) : 0;
+                const userPercent = total > 0 ? Math.round((userCount / total) * 100) : 0;
+                const normalPercent = total > 0 ? Math.round((normalCount / total) * 100) : 0;
+                const avgLength = total > 0 ? Math.round(totalLength / total) : 0;
+
+                csvRows.push(['统计项目', '数量', '百分比', '进度条', '平均长度', '备注', '']);
+                csvRows.push([
+                    '🚫 系统屏蔽',
+                    systemCount + ' 条',
+                    systemPercent + '%',
+                    generateProgressBar(systemCount, total),
+                    avgLength + ' 字符',
+                    '被系统自动过滤的弹幕',
+                    ''
+                ]);
+                csvRows.push([
+                    '⚠️ 主播屏蔽',
+                    userCount + ' 条',
+                    userPercent + '%',
+                    generateProgressBar(userCount, total),
+                    avgLength + ' 字符',
+                    '被主播手动删除的弹幕',
+                    ''
+                ]);
+                csvRows.push([
+                    '✅ 正常显示',
+                    normalCount + ' 条',
+                    normalPercent + '%',
+                    generateProgressBar(normalCount, total),
+                    avgLength + ' 字符',
+                    '成功发送并显示的弹幕',
+                    ''
+                ]);
+                csvRows.push(['', '', '', '', '', '', '']);
+                csvRows.push(['📈 汇总信息', '', '', '', '', '', '']);
+                csvRows.push(['总弹幕数', total + ' 条', '', '', '', '', '']);
+                csvRows.push(['总字符数', totalLength + ' 字符', '', '', '', '', '']);
+                csvRows.push(['平均长度', avgLength + ' 字符/条', '', '', '', '', '']);
+                csvRows.push(['屏蔽率', Math.round(((systemCount + userCount) / total) * 100) + '%', '', '', '', '', '']);
+                csvRows.push(['成功率', normalPercent + '%', '', '', '', '', '']);
+                
+                // 添加分析建议
+                csvRows.push([]);
+                csvRows.push(['💡 数据分析建议', '', '', '', '', '', '']);
+                if (systemCount > userCount) {
+                    csvRows.push(['系统屏蔽较多', '建议检查弹幕内容是否包含敏感词', '', '', '', '', '']);
+                }
+                if (userCount > systemCount) {
+                    csvRows.push(['主播屏蔽较多', '建议了解主播的屏蔽规则', '', '', '', '', '']);
+                }
+                if (normalPercent > 80) {
+                    csvRows.push(['发送成功率较高', '弹幕发送策略较为有效', '', '', '', '', '']);
+                } else {
+                    csvRows.push(['发送成功率较低', '建议优化弹幕内容策略', '', '', '', '', '']);
+                }
+
+                // 添加文件尾部信息
+                csvRows.push([]);
+                csvRows.push(['========================================', '', '', '', '', '', '']);
+                csvRows.push(['感谢使用弹幕反诈与防河蟹脚本', '', '', '', '', '', '']);
+                csvRows.push(['导出工具版本: 2.2 (美化版)', '', '', '', '', '', '']);
+                csvRows.push(['数据格式: CSV (UTF-8 with BOM)', '', '', '', '', '', '']);
+                csvRows.push(['========================================', '', '', '', '', '', '']);
+
+                // 将CSV数据转换为字符串
+                const csvContent = csvRows.map(row => 
+                    row.map(field => escapeCsvField(field)).join(',')
+                ).join('\n');
+
+                // 添加BOM以支持Excel正确显示中文
+                const bom = '\uFEFF';
+                const csvWithBom = bom + csvContent;
+
+                // 创建下载链接 - 优化内存使用
+                const blob = new Blob([csvWithBom], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // 美化文件名生成
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('zh-CN').replace(/\//g, '-');
+                const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false }).replace(/:/g, '-');
+                
+                const { streamer, streamName } = titleInfo;
+                let filename;
+                if (streamer && streamName) {
+                    filename = `弹幕记录_${streamer}_${streamName}_${dateStr}_${timeStr}.csv`;
+                } else if (streamer) {
+                    filename = `弹幕记录_${streamer}_${dateStr}_${timeStr}.csv`;
+                } else if (streamName) {
+                    filename = `弹幕记录_${streamName}_${dateStr}_${timeStr}.csv`;
+                } else {
+                    filename = `弹幕记录_${dateStr}_${timeStr}.csv`;
+                }
+                
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                
+                // 立即清理DOM和URL
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+
+                // 显示成功提示
+                saveBtn.textContent = '✅ 导出完成';
+                saveBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                showNotification(`CSV文件导出成功！共导出 ${total} 条记录`, 'success', 3000);
+                
+                setTimeout(() => {
+                    saveBtn.textContent = originalText;
+                    saveBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                    saveBtn.disabled = false;
+                }, 3000);
+
+            } catch (error) {
+                console.error('CSV导出失败:', error);
+                saveBtn.textContent = '❌ 导出失败';
+                saveBtn.style.background = 'linear-gradient(135deg, #f44336, #d32f2f)';
+                showNotification('CSV导出失败，请重试！', 'error', 3000);
+                
+                setTimeout(() => {
+                    saveBtn.textContent = originalText;
+                    saveBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                    saveBtn.disabled = false;
+                }, 3000);
+            }
+        }, 100);
+    }
+
+    // 主导出函数 - 根据配置选择导出格式
+    function saveDanmuLogs(contentArea, saveBtn) {
+        const exportFormat = sensitiveWordsConfig.exportFormat || 'csv';
+        
+        if (exportFormat === 'txt') {
+            saveDanmuLogsToTxt(contentArea, saveBtn);
+        } else {
+            saveDanmuLogsToCsv(contentArea, saveBtn);
+        }
+    }
+
+    // 更新保存按钮文本显示当前导出格式
+    function updateSaveButtonText() {
+        // 更精确地选择保存按钮 - 它是第3个按钮（清空、保存、敏感词、关闭）
+        const saveBtn = document.querySelector('#danmu-log-box button:nth-child(3)');
+        if (saveBtn && saveBtn.textContent.includes('保存')) {
+            const exportFormat = sensitiveWordsConfig.exportFormat || 'csv';
+            const formatIcon = exportFormat === 'txt' ? '📄' : '📊';
+            const formatText = exportFormat === 'txt' ? 'TXT' : 'CSV';
+            saveBtn.textContent = `${formatIcon} 保存(${formatText})`;
+        }
     }
 
     // 添加全局清理函数
@@ -1857,6 +2246,7 @@
                 sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : sensitiveWordsConfig.defaultConfig.fuzzyMatch;
                 sensitiveWordsConfig.showLogBoxByDefault = config.showLogBoxByDefault !== undefined ? config.showLogBoxByDefault : sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
+                sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
                 if (config.words && Array.isArray(config.words)) {
                     sensitiveWordsConfig.words = config.words;
                 }
