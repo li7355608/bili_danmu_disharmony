@@ -1859,6 +1859,9 @@
                 let userCount = 0;
                 let normalCount = 0;
                 let totalLength = 0;
+                let systemLength = 0;
+                let userLength = 0;
+                let normalLength = 0;
 
                 // 遍历弹幕记录并转换为美化CSV格式
                 Array.from(entries).forEach((entry, index) => {
@@ -1893,10 +1896,13 @@
                     // 统计数量和长度
                     if (type.includes('系统屏蔽')) {
                         systemCount++;
+                        systemLength += content.length;
                     } else if (type.includes('主播屏蔽')) {
                         userCount++;
+                        userLength += content.length;
                     } else if (type.includes('正常显示')) {
                         normalCount++;
+                        normalLength += content.length;
                     }
                     totalLength += content.length;
 
@@ -1947,7 +1953,12 @@
                 const systemPercent = total > 0 ? Math.round((systemCount / total) * 100) : 0;
                 const userPercent = total > 0 ? Math.round((userCount / total) * 100) : 0;
                 const normalPercent = total > 0 ? Math.round((normalCount / total) * 100) : 0;
-                const avgLength = total > 0 ? Math.round(totalLength / total) : 0;
+                
+                // 计算各类型的平均长度
+                const systemAvgLength = systemCount > 0 ? Math.round(systemLength / systemCount) : 0;
+                const userAvgLength = userCount > 0 ? Math.round(userLength / userCount) : 0;
+                const normalAvgLength = normalCount > 0 ? Math.round(normalLength / normalCount) : 0;
+                const totalAvgLength = total > 0 ? Math.round(totalLength / total) : 0;
 
                 csvRows.push(['统计项目', '数量', '百分比', '进度条', '平均长度', '备注', '']);
                 csvRows.push([
@@ -1955,7 +1966,7 @@
                     systemCount + ' 条',
                     systemPercent + '%',
                     generateProgressBar(systemCount, total),
-                    avgLength + ' 字符',
+                    systemAvgLength + ' 字符',
                     '被系统自动过滤的弹幕',
                     ''
                 ]);
@@ -1964,7 +1975,7 @@
                     userCount + ' 条',
                     userPercent + '%',
                     generateProgressBar(userCount, total),
-                    avgLength + ' 字符',
+                    userAvgLength + ' 字符',
                     '被主播手动删除的弹幕',
                     ''
                 ]);
@@ -1973,7 +1984,7 @@
                     normalCount + ' 条',
                     normalPercent + '%',
                     generateProgressBar(normalCount, total),
-                    avgLength + ' 字符',
+                    normalAvgLength + ' 字符',
                     '成功发送并显示的弹幕',
                     ''
                 ]);
@@ -1981,7 +1992,7 @@
                 csvRows.push(['📈 汇总信息', '', '', '', '', '', '']);
                 csvRows.push(['总弹幕数', total + ' 条', '', '', '', '', '']);
                 csvRows.push(['总字符数', totalLength + ' 字符', '', '', '', '', '']);
-                csvRows.push(['平均长度', avgLength + ' 字符/条', '', '', '', '', '']);
+                csvRows.push(['平均长度', totalAvgLength + ' 字符/条', '', '', '', '', '']);
                 csvRows.push(['屏蔽率', Math.round(((systemCount + userCount) / total) * 100) + '%', '', '', '', '', '']);
                 csvRows.push(['成功率', normalPercent + '%', '', '', '', '', '']);
                 
@@ -2004,7 +2015,6 @@
                 csvRows.push([]);
                 csvRows.push(['========================================', '', '', '', '', '', '']);
                 csvRows.push(['感谢使用弹幕反诈与防河蟹脚本', '', '', '', '', '', '']);
-                csvRows.push(['导出工具版本: 2.2 (美化版)', '', '', '', '', '', '']);
                 csvRows.push(['数据格式: CSV (UTF-8 with BOM)', '', '', '', '', '', '']);
                 csvRows.push(['========================================', '', '', '', '', '', '']);
 
