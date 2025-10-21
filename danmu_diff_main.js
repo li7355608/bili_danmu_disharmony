@@ -1421,6 +1421,62 @@
         showNotification('配置保存成功！', 'success', 5000);
     }
 
+    // 统一的标题处理函数：清理标题并解析为主播名和直播名
+    function processPageTitle(title) {
+        if (!title) return { streamer: '', streamName: '', cleanTitle: '' };
+        
+        // 1. 去除无用的平台后缀
+        const platformSuffixes = [
+            ' - 哔哩哔哩直播，二次元弹幕直播平台',
+            ' - 哔哩哔哩直播',
+            ' - bilibili直播',
+            ' - B站直播',
+            ' - 哔哩哔哩',
+            ' - bilibili',
+            ' - B站',
+            ' - 直播',
+            ' - Live',
+            ' - LIVE'
+        ];
+        
+        let cleanTitle = title.trim();
+        for (const suffix of platformSuffixes.sort((a, b) => b.length - a.length)) {
+            if (cleanTitle.endsWith(suffix)) {
+                cleanTitle = cleanTitle.slice(0, -suffix.length).trim();
+                break;
+            }
+        }
+        
+        // 2. 解析主播名和直播名
+        const parts = cleanTitle.split(' - ');
+        let streamer = '', streamName = '';
+        
+        if (parts.length >= 2) {
+            streamer = parts[parts.length - 1].trim();
+            streamName = parts.slice(0, -1).join(' - ').trim();
+        } else if (cleanTitle.length <= 10) {
+            streamer = cleanTitle;
+        } else {
+            streamName = cleanTitle;
+        }
+        
+        // 3. 清理文件名中的特殊字符
+        const sanitize = (text) => {
+            if (!text) return '';
+            return text
+                .replace(/[<>:"/\\|?*\s]+/g, '_')  // 替换特殊字符和空格
+                .replace(/_{2,}/g, '_')            // 合并连续下划线
+                .replace(/^_|_$/g, '')             // 去除首尾下划线
+                .substring(0, 30);                // 限制长度
+        };
+        
+        return {
+            streamer: sanitize(streamer),
+            streamName: sanitize(streamName),
+            cleanTitle: cleanTitle
+        };
+    }
+
     // 保存弹幕记录到文件 - 优化版本
     function saveDanmuLogs(contentArea, saveBtn) {
         const entries = contentArea.children;
@@ -1430,12 +1486,15 @@
         }
 
         // 使用StringBuilder模式优化字符串拼接 - 简化排版
+        const titleInfo = processPageTitle(document.title);
         const saveContent = [
             '================================================',
             '                弹幕记录保存文件',
             '================================================',
             '',
             '📅 保存时间: ' + new Date().toLocaleString(),
+            '🎮 直播名称: ' + (titleInfo.streamName || '未知'),
+            '👤 主播名称: ' + (titleInfo.streamer || '未知'),
             '📊 记录总数: ' + entries.length + ' 条',
             '',
             '================================================',
@@ -1553,15 +1612,21 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        // 生成本地时区的易读文件名
+        // 生成文件名：主播_直播名_时间
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        const filename = `弹幕记录_${year}年${month}月${day}日_${hours}时${minutes}分${seconds}秒.txt`;
+        const timePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+        
+        const { streamer, streamName } = titleInfo;
+        let filename;
+        if (streamer && streamName) {
+            filename = `${streamer}_${streamName}_${timePart}.txt`;
+        } else if (streamer) {
+            filename = `${streamer}_${timePart}.txt`;
+        } else if (streamName) {
+            filename = `${streamName}_${timePart}.txt`;
+        } else {
+            filename = `弹幕记录_${timePart}.txt`;
+        }
         a.download = filename;
         a.style.display = 'none'; // 避免闪烁
         document.body.appendChild(a);
