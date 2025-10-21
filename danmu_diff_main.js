@@ -1030,7 +1030,7 @@
         exportFormatSelect.id = 'export-format-select';
         exportFormatSelect.value = sensitiveWordsConfig.exportFormat;
         exportFormatSelect.style.cssText = `
-            width: 120px;
+            width: 125px;
             padding: 8px 12px;
             border: 2px solid rgba(0, 161, 214, 0.5);
             border-radius: 6px;
