@@ -629,7 +629,7 @@
             border-radius: 12px;
             padding: 20px;
             width: 500px;
-            max-height: 80vh;
+            max-height: 90vh;
             overflow-y: auto;
             color: white;
             font-family: 'Microsoft YaHei', sans-serif;
@@ -1045,6 +1045,17 @@
             -moz-user-select: none;
             -ms-user-select: none;
         `;
+
+        // 添加自定义下拉选项样式 - 只解决文字看不清的问题
+        const selectStyle = document.createElement('style');
+        selectStyle.textContent = `
+            #export-format-select option {
+                background: #2c2c2c !important;
+                color: white !important;
+                padding: 8px 12px;
+            }
+        `;
+        document.head.appendChild(selectStyle);
 
         // 添加选项
         const txtOption = document.createElement('option');
