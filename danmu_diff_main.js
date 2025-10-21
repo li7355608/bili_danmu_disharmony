@@ -2038,11 +2038,11 @@
                 const { streamer, streamName } = titleInfo;
                 let filename;
                 if (streamer && streamName) {
-                    filename = `弹幕记录_${streamer}_${streamName}_${dateStr}_${timeStr}.csv`;
+                    filename = `${streamer}_${streamName}_${dateStr}_${timeStr}.csv`;
                 } else if (streamer) {
-                    filename = `弹幕记录_${streamer}_${dateStr}_${timeStr}.csv`;
+                    filename = `${streamer}_${dateStr}_${timeStr}.csv`;
                 } else if (streamName) {
-                    filename = `弹幕记录_${streamName}_${dateStr}_${timeStr}.csv`;
+                    filename = `${streamName}_${dateStr}_${timeStr}.csv`;
                 } else {
                     filename = `弹幕记录_${dateStr}_${timeStr}.csv`;
                 }
