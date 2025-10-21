@@ -631,6 +631,68 @@
             -ms-user-select: none;
         `;
 
+        // 添加自定义勾选框样式
+        const checkboxStyle = document.createElement('style');
+        checkboxStyle.textContent = `
+            #sensitive-word-manager input[type="checkbox"] {
+                appearance: none;
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                width: 18px;
+                height: 18px;
+                border: 2px solid rgba(0, 161, 214, 0.6);
+                border-radius: 4px;
+                background: linear-gradient(135deg, #333, #2a2a2a);
+                cursor: pointer;
+                position: relative;
+                transition: all 0.3s ease;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            
+            #sensitive-word-manager input[type="checkbox"]:hover {
+                border-color: #00a1d6;
+                box-shadow: 0 0 8px rgba(0, 161, 214, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.3);
+                transform: scale(1.05);
+            }
+            
+            #sensitive-word-manager input[type="checkbox"]:checked {
+                background: linear-gradient(135deg, #00a1d6, #0088cc);
+                border-color: #00a1d6;
+                box-shadow: 0 0 12px rgba(0, 161, 214, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            }
+            
+            #sensitive-word-manager input[type="checkbox"]:checked::after {
+                content: '✓';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                font-size: 12px;
+                font-weight: bold;
+                text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+            }
+            
+            #sensitive-word-manager input[type="checkbox"]:focus {
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(0, 161, 214, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            
+            #sensitive-word-manager label {
+                cursor: pointer;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                transition: color 0.2s ease;
+            }
+            
+            #sensitive-word-manager label:hover {
+                color: #00a1d6;
+            }
+        `;
+        document.head.appendChild(checkboxStyle);
+
         // 标题栏
         const titleBar = document.createElement('div');
         titleBar.style.cssText = `
