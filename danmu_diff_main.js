@@ -629,7 +629,7 @@
             border-radius: 12px;
             padding: 20px;
             width: 500px;
-            max-height: 90vh;
+            max-height: 95vh;
             overflow-y: auto;
             color: white;
             font-family: 'Microsoft YaHei', sans-serif;
