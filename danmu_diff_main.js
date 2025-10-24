@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.3
+// @version      3.5.4
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -241,18 +241,31 @@
             const textToCheck = sensitiveWordsConfig.caseSensitive ? text : text.toLowerCase();
 
             if (sensitiveWordsConfig.fuzzyMatch) {
-                // 模糊匹配：检查是否包含敏感词
+                // 模糊匹配：检查是否包含敏感词，处理重叠情况
                 words.forEach(word => {
                     const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
-                    if (textToCheck.includes(wordToCheck)) {
+                    let searchIndex = 0;
+                    
+                    // 查找所有匹配的位置，不仅仅是第一个
+                    while (searchIndex < textToCheck.length) {
+                        const foundIndex = textToCheck.indexOf(wordToCheck, searchIndex);
+                        if (foundIndex === -1) break;
+                        
                         detectedWords.push({
                             word: word,
                             originalWord: word,
-                            startIndex: textToCheck.indexOf(wordToCheck),
-                            endIndex: textToCheck.indexOf(wordToCheck) + wordToCheck.length
+                            startIndex: foundIndex,
+                            endIndex: foundIndex + wordToCheck.length
                         });
+                        
+                        searchIndex = foundIndex + 1;
                     }
                 });
+                
+                // 去重：移除重叠的检测结果，保留较长的敏感词
+                const filteredWords = this.removeOverlappingDetections(detectedWords);
+                detectedWords.length = 0; // 清空原数组
+                detectedWords.push(...filteredWords); // 添加过滤后的结果
             } else {
                 // 精确匹配：使用分词器进行分词后精确匹配
                 if (ensureSegmentitReady()) {
@@ -289,6 +302,39 @@
             }
 
             return detectedWords;
+        },
+
+        // 移除重叠的检测结果，保留较长的敏感词
+        removeOverlappingDetections(detectedWords) {
+            if (detectedWords.length <= 1) return detectedWords;
+            
+            // 按开始位置排序
+            detectedWords.sort((a, b) => a.startIndex - b.startIndex);
+            
+            const result = [];
+            let current = detectedWords[0];
+            
+            for (let i = 1; i < detectedWords.length; i++) {
+                const next = detectedWords[i];
+                
+                // 检查是否重叠
+                if (next.startIndex < current.endIndex) {
+                    // 重叠：保留较长的敏感词
+                    if (next.endIndex - next.startIndex > current.endIndex - current.startIndex) {
+                        current = next;
+                    }
+                    // 如果长度相同，保留第一个（current）
+                } else {
+                    // 不重叠：添加当前结果，移动到下一个
+                    result.push(current);
+                    current = next;
+                }
+            }
+            
+            // 添加最后一个结果
+            result.push(current);
+            
+            return result;
         },
 
         // 高亮敏感词
