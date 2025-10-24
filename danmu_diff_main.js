@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.2
+// @version      3.5.3
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -292,15 +292,15 @@
         },
 
         // 高亮敏感词
-        highlightSensitiveWords(text) {
-            const detectedWords = this.detectSensitiveWords(text);
-            if (detectedWords.length === 0) return text;
+        highlightSensitiveWords(text, detectedWords = null) {
+            const words = detectedWords || this.detectSensitiveWords(text);
+            if (words.length === 0) return text;
 
             // 按位置排序，从后往前替换避免位置偏移
-            detectedWords.sort((a, b) => b.startIndex - a.startIndex);
+            words.sort((a, b) => b.startIndex - a.startIndex);
 
             let highlightedText = text;
-            detectedWords.forEach(item => {
+            words.forEach(item => {
                 const before = highlightedText.substring(0, item.startIndex);
                 const sensitive = highlightedText.substring(item.startIndex, item.endIndex);
                 const after = highlightedText.substring(item.endIndex);
@@ -2300,8 +2300,8 @@
 
         // 弹幕内容被系统活主播屏蔽，对弹幕进行敏感词检测
         if (type === 'system' || type === 'user') {
-            highlightedContent = sensitiveWordManager.highlightSensitiveWords(content);
             detectedWords = sensitiveWordManager.detectSensitiveWords(content);
+            highlightedContent = sensitiveWordManager.highlightSensitiveWords(content, detectedWords);
         }
 
         // 使用DocumentFragment批量操作DOM
