@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.0
+// @version      3.5.1
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -76,6 +76,11 @@
     function testSegmentitSegmentation(text) {
         if (!text) return;
         
+        // 检查是否启用了分词器测试，如未启用则不执行分词输出
+        if (!sensitiveWordsConfig.enableSegmentationTest) {
+            return;
+        }
+        
         try {
             // 检查segmentit是否可用
             if (segmentitLoaded && segmentit && segmentit.doSegment) {
@@ -116,6 +121,8 @@
             caseSensitive: false,
             // 是否启用模糊匹配
             fuzzyMatch: true,
+            // 是否启用分词器测试
+            enableSegmentationTest: false,
             // 是否默认显示弹幕记录板
             showLogBoxByDefault: true,
             // 弹幕记录板容量限制
@@ -143,6 +150,7 @@
         enabled: true,
         caseSensitive: false,
         fuzzyMatch: true,
+        enableSegmentationTest: false,
         showLogBoxByDefault: true,
         logBoxCapacity: 50,
         exportFormat: 'csv'
@@ -153,6 +161,7 @@
         sensitiveWordsConfig.enabled = sensitiveWordsConfig.defaultConfig.enabled;
         sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
         sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
+        sensitiveWordsConfig.enableSegmentationTest = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
         sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
@@ -184,6 +193,7 @@
                 enabled: sensitiveWordsConfig.enabled,
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
+                enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
@@ -623,15 +633,17 @@
         caseCheckbox: null,
         fuzzyCheckbox: null,
         showLogBoxCheckbox: null,
+        segmentationCheckbox: null,
         capacityInput: null,
         exportFormatSelect: null,
 
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput, exportFormatSelect) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
             this.showLogBoxCheckbox = showLogBoxCheckbox;
+            this.segmentationCheckbox = segmentationCheckbox;
             this.capacityInput = capacityInput;
             this.exportFormatSelect = exportFormatSelect;
         },
@@ -642,6 +654,7 @@
             if (this.caseCheckbox) this.caseCheckbox.checked = sensitiveWordsConfig.defaultConfig.caseSensitive;
             if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
             if (this.showLogBoxCheckbox) this.showLogBoxCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+            if (this.segmentationCheckbox) this.segmentationCheckbox.checked = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
             if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
             if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
         }
@@ -1030,6 +1043,16 @@
         showLogBoxLabel.textContent = '默认显示弹幕记录板（取消则发送弹幕后展示）';
         showLogBoxLabel.style.marginLeft = '5px';
 
+        const segmentationCheckbox = document.createElement('input');
+        segmentationCheckbox.type = 'checkbox';
+        segmentationCheckbox.id = 'segmentation-test-check';
+        segmentationCheckbox.checked = sensitiveWordsConfig.enableSegmentationTest;
+
+        const segmentationLabel = document.createElement('label');
+        segmentationLabel.htmlFor = 'segmentation-test-check';
+        segmentationLabel.textContent = '启用分词器内容输出（测试功能）';
+        segmentationLabel.style.marginLeft = '5px';
+
         // 添加容量配置
         const capacityLabel = document.createElement('label');
         capacityLabel.textContent = '弹幕记录板容量:';
@@ -1154,6 +1177,9 @@
         configSection.appendChild(showLogBoxCheckbox);
         configSection.appendChild(showLogBoxLabel);
         configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(segmentationCheckbox);
+        configSection.appendChild(segmentationLabel);
+        configSection.appendChild(document.createElement('br'));
         configSection.appendChild(capacityLabel);
         configSection.appendChild(capacityInput);
         configSection.appendChild(capacityUnitLabel);
@@ -1163,7 +1189,7 @@
         configSection.appendChild(exportFormatDesc);
 
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput, exportFormatSelect);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -1439,6 +1465,7 @@
             sensitiveWordsConfig.caseSensitive = caseCheckbox.checked;
             sensitiveWordsConfig.fuzzyMatch = fuzzyCheckbox.checked;
             sensitiveWordsConfig.showLogBoxByDefault = showLogBoxCheckbox.checked;
+            sensitiveWordsConfig.enableSegmentationTest = segmentationCheckbox.checked;
             sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
 
             // 验证并设置容量值
@@ -1456,6 +1483,7 @@
                 enabled: sensitiveWordsConfig.enabled,
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
+                enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
