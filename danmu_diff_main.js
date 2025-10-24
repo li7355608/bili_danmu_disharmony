@@ -1364,6 +1364,11 @@
 
             // 添加容量信息显示
             const capacityInfo = document.createElement('div');
+            
+            // 动态计算容量阈值
+            const warningThreshold = Math.ceil(maxCapacity * 0.3);  // 剩余30%
+            const alertThreshold = Math.ceil(maxCapacity * 0.05);  // 剩余5%
+            
             capacityInfo.style.cssText = `
                 padding: 8px 15px;
                 margin-bottom: 10px;
@@ -1375,11 +1380,13 @@
                 text-align: center;
             `;
             
-            if (remainingCount <= 10) {
+            if (remainingCount <= alertThreshold) {
+                // 空间严重不足，红色严重警告
                 capacityInfo.style.color = '#f44336';
                 capacityInfo.style.background = 'linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(244, 67, 54, 0.05))';
                 capacityInfo.style.borderColor = 'rgba(244, 67, 54, 0.3)';
-            } else if (remainingCount <= 50) {
+            } else if (remainingCount <= warningThreshold) {
+                // 空间不足，即将达到阈值，橙色提醒
                 capacityInfo.style.color = '#ff9800';
                 capacityInfo.style.background = 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05))';
                 capacityInfo.style.borderColor = 'rgba(255, 152, 0, 0.3)';
