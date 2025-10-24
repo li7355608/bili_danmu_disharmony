@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.1
+// @version      3.5.2
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -71,6 +71,14 @@
         } catch (error) {
             console.error("初始化Segmentit分词器时出错:", error);
         }
+    }
+
+    // 确保分词器可用的函数
+    function ensureSegmentitReady() {
+        if (!segmentitLoaded) {
+            initSegmentit();
+        }
+        return segmentitLoaded && segmentit && segmentit.doSegment;
     }
 
     function testSegmentitSegmentation(text) {
@@ -232,11 +240,10 @@
             const detectedWords = [];
             const textToCheck = sensitiveWordsConfig.caseSensitive ? text : text.toLowerCase();
 
-            words.forEach(word => {
-                const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
-
-                if (sensitiveWordsConfig.fuzzyMatch) {
-                    // 模糊匹配：检查是否包含敏感词
+            if (sensitiveWordsConfig.fuzzyMatch) {
+                // 模糊匹配：检查是否包含敏感词
+                words.forEach(word => {
+                    const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
                     if (textToCheck.includes(wordToCheck)) {
                         detectedWords.push({
                             word: word,
@@ -245,20 +252,41 @@
                             endIndex: textToCheck.indexOf(wordToCheck) + wordToCheck.length
                         });
                     }
-                } else {
-                    // 精确匹配：使用正则表达式
-                    const regex = new RegExp(`\\b${wordToCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-                    let match;
-                    while ((match = regex.exec(textToCheck)) !== null) {
-                        detectedWords.push({
-                            word: word,
-                            originalWord: word,
-                            startIndex: match.index,
-                            endIndex: match.index + match[0].length
+                });
+            } else {
+                // 精确匹配：使用分词器进行分词后精确匹配
+                if (ensureSegmentitReady()) {
+                    try {
+                        const segments = segmentit.doSegment(text);
+                        console.log("精确匹配模式 - 分词结果:", segments.map(s => s.w));
+                        
+                        // 对每个敏感词检查是否在分词结果中
+                        words.forEach(word => {
+                            const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
+                            segments.forEach((segment, index) => {
+                                const segmentToCheck = sensitiveWordsConfig.caseSensitive ? segment.w : segment.w.toLowerCase();
+                                
+                                // 精确匹配：分词结果必须完全等于敏感词
+                                if (segmentToCheck === wordToCheck) {
+                                    console.log(`精确匹配检测到敏感词: "${word}" 在分词: "${segment.w}"`);
+                                    detectedWords.push({
+                                        word: word,
+                                        originalWord: word,
+                                        segment: segment.w,
+                                        segmentIndex: index,
+                                        startIndex: text.indexOf(segment.w),
+                                        endIndex: text.indexOf(segment.w) + segment.w.length
+                                    });
+                                }
+                            });
                         });
+                    } catch (error) {
+                        console.error("精确匹配分词出错:", error);
                     }
+                } else {
+                    console.log("分词器未就绪，精确匹配功能不可用");
                 }
-            });
+            }
 
             return detectedWords;
         },
