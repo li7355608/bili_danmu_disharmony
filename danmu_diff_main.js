@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.4.7
+// @version      3.5.0
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -8,6 +8,7 @@
 // @match        https://live.bilibili.com/*
 // @run-at       document-start
 // @grant        unsafeWindow
+// @require      https://cdn.jsdelivr.net/npm/segmentit@2.0.3/dist/umd/segmentit.min.js
 // @namespace https://greasyfork.org/users/1390050
 // @downloadURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.user.js
 // @updateURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.meta.js
@@ -49,6 +50,61 @@
     const success_msg = "恭喜，你的弹幕正常显示！"
     const error_msg = "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)"
     const error_send_msg = "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
+
+    // Segmentit分词器测试功能
+    let segmentit = null;
+    let segmentitLoaded = false;
+
+    // 初始化segmentit分词器
+    function initSegmentit() {
+        if (segmentitLoaded) return;
+        
+        try {
+            // 检查segmentit是否可用
+            if (typeof Segmentit !== 'undefined' && Segmentit.Segment && Segmentit.useDefault) {
+                segmentit = Segmentit.useDefault(new Segmentit.Segment());
+                segmentitLoaded = true;
+                console.log("Segmentit分词器初始化完成");
+            } else {
+                console.error("Segmentit分词器未加载");
+            }
+        } catch (error) {
+            console.error("初始化Segmentit分词器时出错:", error);
+        }
+    }
+
+    function testSegmentitSegmentation(text) {
+        if (!text) return;
+        
+        try {
+            // 检查segmentit是否可用
+            if (segmentitLoaded && segmentit && segmentit.doSegment) {
+                const segments = segmentit.doSegment(text);
+                // 提取分词结果
+                const words = segments.map(item => item.w);
+                console.log("=== Segmentit分词测试 ===");
+                console.log("弹幕内容:", text);
+                console.log("分词结果:", words);
+                console.log("分词数量:", words.length);
+                console.log("详细结果:", segments);
+                console.log("========================");
+                return words;
+            } else {
+                console.log("=== Segmentit分词测试 ===");
+                console.log("弹幕内容:", text);
+                console.log("segmentit分词器未就绪，使用简单分词:", text.split(''));
+                console.log("========================");
+                return text.split('');
+            }
+        } catch (error) {
+            console.error("segmentit分词测试出错:", error);
+            console.log("=== Segmentit分词测试 ===");
+            console.log("弹幕内容:", text);
+            console.log("分词失败，使用简单分词:", text.split(''));
+            console.log("========================");
+            return text.split('');
+        }
+    }
 
     // 敏感词管理器初始化配置
     const sensitiveWordsConfig = {
@@ -2304,6 +2360,11 @@
         }, msg_time);
     }
 
+    // 初始化segmentit分词器
+    setTimeout(() => {
+        initSegmentit();
+    }, 1000);
+
     // 优化URL检查 - 使用正则表达式和缓存
     const SEND_DM_URL_REGEX = /api\.live\.bilibili\.com\/msg\/send/;
     const urlCache = new Map();
@@ -2388,6 +2449,9 @@
                 try {
                     const extraData = JSON.parse(data.data.mode_info.extra);
                     if (extraData.content) {
+                        // 对所有弹幕进行segmentit分词测试
+                        testSegmentitSegmentation(extraData.content);
+                        
                         // 根据屏蔽类型进行针对性输出
                         if (data.msg === "f") {
                             console.log("系统屏蔽弹幕:", extraData.content);
