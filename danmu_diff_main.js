@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.5
+// @version      3.5.6
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -137,6 +137,8 @@
             logBoxCapacity: 50,
             // 默认导出格式：'txt' 或 'csv'
             exportFormat: 'csv',
+            // 敏感词库最大容量限制
+            maxWordsCapacity: 1000,
             // 默认敏感词列表
             words: [
                 '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
@@ -212,12 +214,22 @@
         // 添加敏感词
         addWord(word) {
             const words = this.getWords();
-            if (!words.includes(word)) {
-                words.push(word);
-                this.saveWords(words);
-                return true;
+            const maxCapacity = sensitiveWordsConfig.defaultConfig.maxWordsCapacity;
+            
+            // 检查是否已存在
+            if (words.includes(word)) {
+                return false;
             }
-            return false;
+            
+            // 检查容量限制并打印到控制台日志
+            if (words.length >= maxCapacity) {
+                console.warn(`敏感词库已达到最大容量限制 (${maxCapacity}个)，无法添加更多敏感词`);
+                return false;
+            }
+            
+            words.push(word);
+            this.saveWords(words);
+            return true;
         },
 
         // 删除敏感词
@@ -1344,10 +1356,43 @@
         // 更新敏感词列表显示
         function updateWordList() {
             const words = sensitiveWordManager.getWords();
+            const maxCapacity = sensitiveWordsConfig.defaultConfig.maxWordsCapacity;
+            const currentCount = words.length;
+            const remainingCount = maxCapacity - currentCount;
+            
             wordList.innerHTML = '';
 
+            // 添加容量信息显示
+            const capacityInfo = document.createElement('div');
+            capacityInfo.style.cssText = `
+                padding: 8px 15px;
+                margin-bottom: 10px;
+                background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
+                border-radius: 6px;
+                border: 1px solid rgba(33, 150, 243, 0.3);
+                font-size: 12px;
+                color: #2196F3;
+                text-align: center;
+            `;
+            
+            if (remainingCount <= 10) {
+                capacityInfo.style.color = '#f44336';
+                capacityInfo.style.background = 'linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(244, 67, 54, 0.05))';
+                capacityInfo.style.borderColor = 'rgba(244, 67, 54, 0.3)';
+            } else if (remainingCount <= 50) {
+                capacityInfo.style.color = '#ff9800';
+                capacityInfo.style.background = 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05))';
+                capacityInfo.style.borderColor = 'rgba(255, 152, 0, 0.3)';
+            }
+            
+            capacityInfo.textContent = `词库容量: ${currentCount}/${maxCapacity} (剩余 ${remainingCount} 个)`;
+            wordList.appendChild(capacityInfo);
+
             if (words.length === 0) {
-                wordList.innerHTML = '<div style="color: #888; text-align: center;">暂无敏感词</div>';
+                const emptyDiv = document.createElement('div');
+                emptyDiv.style.cssText = 'color: #888; text-align: center; padding: 20px;';
+                emptyDiv.textContent = '暂无敏感词';
+                wordList.appendChild(emptyDiv);
                 return;
             }
 
@@ -1492,12 +1537,20 @@
                 return;
             }
 
-            if (sensitiveWordManager.addWord(word)) {
+            const result = sensitiveWordManager.addWord(word);
+            if (result === true) {
                 addInput.value = '';
                 updateWordList();
                 showNotification('敏感词添加成功！', 'success');
             } else {
-                showNotification('该敏感词已存在！', 'warning');
+                // 检查是否是容量限制导致的失败
+                const words = sensitiveWordManager.getWords();
+                const maxCapacity = sensitiveWordsConfig.defaultConfig.maxWordsCapacity;
+                if (words.length >= maxCapacity) {
+                    showNotification(`词库已达最大容量限制 (${maxCapacity}个)，无法添加更多敏感词！`, 'error');
+                } else {
+                    showNotification('该敏感词已存在！', 'warning');
+                }
             }
         };
 
