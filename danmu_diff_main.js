@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.4
+// @version      3.5.5
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -235,8 +235,11 @@
         // 检测敏感词
         detectSensitiveWords(text) {
             if (!sensitiveWordsConfig.enabled || !text) return [];
+            if (text.length > 80) return []; // 忽略超长文本扫描，弹幕最多一次性发40字，不能一次发这么多出来
 
             const words = this.getWords();
+            if (words.length === 0) return []; // 空词库保护，跳过扫描
+
             const detectedWords = [];
             const textToCheck = sensitiveWordsConfig.caseSensitive ? text : text.toLowerCase();
 
@@ -246,8 +249,8 @@
                     const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
                     let searchIndex = 0;
                     
-                    // 查找所有匹配的位置，不仅仅是第一个
-                    while (searchIndex < textToCheck.length) {
+                    // 查找所有匹配的位置，限制检测数量最多为8个
+                    while (searchIndex < textToCheck.length && detectedWords.length < 8) {
                         const foundIndex = textToCheck.indexOf(wordToCheck, searchIndex);
                         if (foundIndex === -1) break;
                         
@@ -311,28 +314,23 @@
             // 按开始位置排序
             detectedWords.sort((a, b) => a.startIndex - b.startIndex);
             
-            const result = [];
-            let current = detectedWords[0];
+            const result = [detectedWords[0]]; // 直接添加第一个
             
             for (let i = 1; i < detectedWords.length; i++) {
-                const next = detectedWords[i];
+                const current = detectedWords[i];
+                const last = result[result.length - 1];
                 
                 // 检查是否重叠
-                if (next.startIndex < current.endIndex) {
-                    // 重叠：保留较长的敏感词
-                    if (next.endIndex - next.startIndex > current.endIndex - current.startIndex) {
-                        current = next;
-                    }
-                    // 如果长度相同，保留第一个（current）
-                } else {
-                    // 不重叠：添加当前结果，移动到下一个
+                if (current.startIndex >= last.endIndex) {
+                    // 不重叠：直接添加
                     result.push(current);
-                    current = next;
+                } else {
+                    // 重叠：保留较长的
+                    if (current.endIndex - current.startIndex > last.endIndex - last.startIndex) {
+                        result[result.length - 1] = current;
+                    }
                 }
             }
-            
-            // 添加最后一个结果
-            result.push(current);
             
             return result;
         },
