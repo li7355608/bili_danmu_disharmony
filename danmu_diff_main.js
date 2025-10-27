@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.9
+// @version      3.5.10
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -16,74 +16,6 @@
 
 (function() {
     'use strict';
-
-    // Segmentit分词器测试功能
-    let segmentit = null;
-    let segmentitLoaded = false;
-
-    // 初始化segmentit分词器
-    function initSegmentit() {
-        if (segmentitLoaded) return;
-        
-        try {
-            // 检查segmentit是否可用
-            if (typeof Segmentit !== 'undefined' && Segmentit.Segment && Segmentit.useDefault) {
-                segmentit = Segmentit.useDefault(new Segmentit.Segment());
-                segmentitLoaded = true;
-                console.log("Segmentit分词器初始化完成");
-            } else {
-                console.error("Segmentit分词器未加载");
-            }
-        } catch (error) {
-            console.error("初始化Segmentit分词器时出错:", error);
-        }
-    }
-
-    // 确保分词器可用的函数
-    function ensureSegmentitReady() {
-        if (!segmentitLoaded) {
-            initSegmentit();
-        }
-        return segmentitLoaded && segmentit && segmentit.doSegment;
-    }
-
-    function testSegmentitSegmentation(text) {
-        if (!text) return;
-        
-        // 检查是否启用了分词器测试，如未启用则不执行分词输出
-        if (!sensitiveWordsConfig.enableSegmentationTest) {
-            return;
-        }
-        
-        try {
-            // 检查segmentit是否可用
-            if (segmentitLoaded && segmentit && segmentit.doSegment) {
-                const segments = segmentit.doSegment(text);
-                // 提取分词结果
-                const words = segments.map(item => item.w);
-                console.log("=== Segmentit分词测试 ===");
-                console.log("弹幕内容:", text);
-                console.log("分词结果:", words);
-                console.log("分词数量:", words.length);
-                console.log("详细结果:", segments);
-                console.log("========================");
-                return words;
-            } else {
-                console.log("=== Segmentit分词测试 ===");
-                console.log("弹幕内容:", text);
-                console.log("segmentit分词器未就绪，使用简单分词:", text.split(''));
-                console.log("========================");
-                return text.split('');
-            }
-        } catch (error) {
-            console.error("segmentit分词测试出错:", error);
-            console.log("=== Segmentit分词测试 ===");
-            console.log("弹幕内容:", text);
-            console.log("分词失败，使用简单分词:", text.split(''));
-            console.log("========================");
-            return text.split('');
-        }
-    }
 
     //全局配置选项
     const globalConfig = {
@@ -162,6 +94,127 @@
         logBoxCapacity: 50,
         exportFormat: 'csv'
     };
+
+    // 控制台样式化输出工具
+    const consoleStyle = {
+        // 成功类型：绿色渐变
+        success: function(message) {
+            console.log(
+                `%c✅ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #986fee, #8695e6, #68b7dd, #18d7d3); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        },
+        // 错误类型：红色渐变
+        error: function(message) {
+            console.log(
+                `%c❌ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #ff6b6b, #ff8e8e, #ffa5a5); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        },
+        // 警告类型：橙色渐变
+        warning: function(message) {
+            console.log(
+                `%c⚠️ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #ff9800, #ffb84d, #ffcc80); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        },
+        // 信息类型：蓝色渐变
+        info: function(message) {
+            console.log(
+                `%cℹ️ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #2196f3, #64b5f6, #90caf9); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        },
+        // 系统屏蔽：红色渐变
+        system: function(message) {
+            console.log(
+                `%c🔴 ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #ff6b6b, #ff8e8e); padding: 4px 8px; border-radius: 4px; font-weight: bold;'
+            );
+        },
+        // 主播屏蔽：橙色渐变
+        user: function(message) {
+            console.log(
+                `%c🟠 ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #ffa500, #ffb84d); padding: 4px 8px; border-radius: 4px; font-weight: bold;'
+            );
+        },
+        // 正常显示：绿色渐变
+        normal: function(message) {
+            console.log(
+                `%c🟢 ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #4caf50, #66bb6a); padding: 4px 8px; border-radius: 4px; font-weight: bold;'
+            );
+        }
+    };
+
+    // Segmentit分词器测试功能
+    let segmentit = null;
+    let segmentitLoaded = false;
+
+    // 初始化segmentit分词器
+    function initSegmentit() {
+        if (segmentitLoaded) return;
+
+        try {
+            // 检查segmentit是否可用
+            if (typeof Segmentit !== 'undefined' && Segmentit.Segment && Segmentit.useDefault) {
+                segmentit = Segmentit.useDefault(new Segmentit.Segment());
+                segmentitLoaded = true;
+                console.log("Segmentit分词器初始化完成");
+            } else {
+                console.error("Segmentit分词器未加载");
+            }
+        } catch (error) {
+            console.error("初始化Segmentit分词器时出错:", error);
+        }
+    }
+
+    // 确保分词器可用的函数
+    function ensureSegmentitReady() {
+        if (!segmentitLoaded) {
+            initSegmentit();
+        }
+        return segmentitLoaded && segmentit && segmentit.doSegment;
+    }
+
+    function testSegmentitSegmentation(text) {
+        if (!text) return;
+
+        // 检查是否启用了分词器测试，如未启用则不执行分词输出
+        if (!sensitiveWordsConfig.enableSegmentationTest) {
+            return;
+        }
+
+        try {
+            // 检查segmentit是否可用
+            if (segmentitLoaded && segmentit && segmentit.doSegment) {
+                const segments = segmentit.doSegment(text);
+                // 提取分词结果
+                const words = segments.map(item => item.w);
+                console.log("=== Segmentit分词测试 ===");
+                console.log("弹幕内容:", text);
+                console.log("分词结果:", words);
+                console.log("分词数量:", words.length);
+                console.log("详细结果:", segments);
+                console.log("========================");
+                return words;
+            } else {
+                console.log("=== Segmentit分词测试 ===");
+                console.log("弹幕内容:", text);
+                console.log("segmentit分词器未就绪，使用简单分词:", text.split(''));
+                console.log("========================");
+                return text.split('');
+            }
+        } catch (error) {
+            console.error("segmentit分词测试出错:", error);
+            console.log("=== Segmentit分词测试 ===");
+            console.log("弹幕内容:", text);
+            console.log("分词失败，使用简单分词:", text.split(''));
+            console.log("========================");
+            return text.split('');
+        }
+    }
 
     // 重置所有选项到默认配置
     function resetToDefaultConfig() {
@@ -2516,13 +2569,13 @@
 
     let windowCtx = self.window;
     if (self.unsafeWindow) {
-        console.log("[弹幕反诈] use unsafeWindow mode");
+        consoleStyle.success(`弹幕反诈脚本已加载 | ${globalConfig.successLoadMsg}`);
         setTimeout(() => {
            showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
         }, globalConfig.msgTime);
         windowCtx = self.unsafeWindow;
     } else {
-        console.log("[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)");
+        consoleStyle.error(`unsafeWindow模式不可用 | ${globalConfig.errorMsg}`);
         setTimeout(() => {
            showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
         }, globalConfig.msgTime);
