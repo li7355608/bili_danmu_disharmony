@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.10
+// @version      3.6.0
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -124,27 +124,6 @@
                 `%cℹ️ ${message}`,
                 'color: #fff; background: linear-gradient(270deg, #2196f3, #64b5f6, #90caf9); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
             );
-        },
-        // 系统屏蔽：红色渐变
-        system: function(message) {
-            console.log(
-                `%c🔴 ${message}`,
-                'color: #fff; background: linear-gradient(270deg, #ff6b6b, #ff8e8e); padding: 4px 8px; border-radius: 4px; font-weight: bold;'
-            );
-        },
-        // 主播屏蔽：橙色渐变
-        user: function(message) {
-            console.log(
-                `%c🟠 ${message}`,
-                'color: #fff; background: linear-gradient(270deg, #ffa500, #ffb84d); padding: 4px 8px; border-radius: 4px; font-weight: bold;'
-            );
-        },
-        // 正常显示：绿色渐变
-        normal: function(message) {
-            console.log(
-                `%c🟢 ${message}`,
-                'color: #fff; background: linear-gradient(270deg, #4caf50, #66bb6a); padding: 4px 8px; border-radius: 4px; font-weight: bold;'
-            );
         }
     };
 
@@ -161,9 +140,9 @@
             if (typeof Segmentit !== 'undefined' && Segmentit.Segment && Segmentit.useDefault) {
                 segmentit = Segmentit.useDefault(new Segmentit.Segment());
                 segmentitLoaded = true;
-                console.log("Segmentit分词器初始化完成");
+                consoleStyle.success("Segmentit分词器初始化完成");
             } else {
-                console.error("Segmentit分词器未加载");
+                consoleStyle.error("Segmentit分词器未加载");
             }
         } catch (error) {
             console.error("初始化Segmentit分词器时出错:", error);
@@ -238,7 +217,7 @@
                     const config = JSON.parse(saved);
                     return config.words || sensitiveWordsConfig.defaultConfig.words;
                 } catch (e) {
-                    console.warn('解析敏感词配置失败，使用默认配置');
+                    consoleStyle.warning('解析本地敏感词配置失败，使用系统默认配置');
                     return sensitiveWordsConfig.defaultConfig.words;
                 }
             }
@@ -273,7 +252,7 @@
             
             // 检查容量限制并打印到控制台日志
             if (words.length >= maxCapacity) {
-                console.warn(`敏感词库已达到最大容量限制 (${maxCapacity}个)，无法添加更多敏感词`);
+                consoleStyle.warning(`敏感词库已达到最大容量限制 (${maxCapacity}个)，无法添加更多敏感词`);
                 return false;
             }
             
@@ -363,7 +342,7 @@
                         console.error("精确匹配分词出错:", error);
                     }
                 } else {
-                    console.log("分词器未就绪，精确匹配功能不可用");
+                    consoleStyle.error("分词器未就绪，精确匹配功能不可用");
                 }
             }
 
@@ -1175,7 +1154,7 @@
 
         const showLogBoxLabel = document.createElement('label');
         showLogBoxLabel.htmlFor = 'show-logbox-check';
-        showLogBoxLabel.textContent = '默认显示弹幕记录板（取消则发送弹幕后展示）';
+        showLogBoxLabel.textContent = '页面加载立即显示记录板';
         showLogBoxLabel.style.marginLeft = '5px';
 
         const segmentationCheckbox = document.createElement('input');
@@ -1185,7 +1164,7 @@
 
         const segmentationLabel = document.createElement('label');
         segmentationLabel.htmlFor = 'segmentation-test-check';
-        segmentationLabel.textContent = '启用分词器内容输出（测试功能）';
+        segmentationLabel.textContent = '启用分词器结果输出';
         segmentationLabel.style.marginLeft = '5px';
 
         // 添加容量配置
@@ -2401,7 +2380,7 @@
             el.style.willChange = 'auto';
         });
 
-        console.log('[弹幕反诈] 清理完成');
+        consoleStyle.info('[弹幕反诈] 检测到页面关闭，资源清理已完成');
     }
 
     // 页面卸载时清理资源
@@ -2529,6 +2508,7 @@
     function initSensitiveWordsConfig() {
         // 如果高级功能关闭，直接返回，不读取配置
         if (!globalConfig.advancedFeaturesEnabled) {
+            consoleStyle.info('检测到高级功能关闭，使用基础检测模式')
             return;
         }
         
@@ -2539,6 +2519,7 @@
                 sensitiveWordsConfig.enabled = config.enabled !== undefined ? config.enabled : sensitiveWordsConfig.defaultConfig.enabled;
                 sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : sensitiveWordsConfig.defaultConfig.caseSensitive;
                 sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : sensitiveWordsConfig.defaultConfig.fuzzyMatch;
+                sensitiveWordsConfig.enableSegmentationTest = config.enableSegmentationTest !== undefined ? config.enableSegmentationTest : sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
                 sensitiveWordsConfig.showLogBoxByDefault = config.showLogBoxByDefault !== undefined ? config.showLogBoxByDefault : sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
@@ -2546,7 +2527,7 @@
                     sensitiveWordsConfig.words = config.words;
                 }
             } catch (e) {
-                console.warn('解析敏感词配置失败，使用默认配置');
+                consoleStyle.warning('解析敏感词配置失败，使用默认配置');
                 // 如果解析失败，清除损坏的配置
                 localStorage.removeItem('danmu_sensitive_words');
             }
