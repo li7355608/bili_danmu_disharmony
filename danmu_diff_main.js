@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.4.7
+// @version      3.6.0
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -8,6 +8,7 @@
 // @match        https://live.bilibili.com/*
 // @run-at       document-start
 // @grant        unsafeWindow
+// @require      https://cdn.jsdelivr.net/npm/segmentit@2.0.3/dist/umd/segmentit.min.js
 // @namespace https://greasyfork.org/users/1390050
 // @downloadURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.user.js
 // @updateURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.meta.js
@@ -16,41 +17,38 @@
 (function() {
     'use strict';
 
-    //系统过滤器权限高于主播，出现关键词后系统会优先删除你的弹幕，其次才是主播
-
-    //脚本加载消息计时器
-    const msg_time = 7000
-
-    //弹幕同屏发送次数，默认为1
-    const exp = 1
-
-    //不同对象屏蔽后显示的弹幕颜色，支持英文和16进制颜色编码
-    const ban_color_system = "#90EE90"
-    const ban_color_user = "deepskyblue"
-    const success_color = "DarkCyan"
-    const error_color = "Crimson"
-
-    // 默认固定从左侧开始滚动的位置
-    const dm_left = '-16%'
-
-    //弹幕距离顶部的位置，如果想要随机可以替换为：`${Math.random() * 100}%`
-    const dm_top = '50%'
-
-    //弹幕字号
-    const dm_fontSize = '36px'
-
-    //发送成功的回调开关，如不需要启用则填写false
-    const success_send = true
-
-    //弹幕内容
-    const ban_system_msg = "发送失败：你的弹幕被系统秒删，修改关键词后重新发吧"
-    const ban_user_msg = "发送失败：你的弹幕被主播删除，看来主播不喜欢某些关键词"
-    const success_load_msg = "弹幕反诈与防河蟹脚本加载完毕！"
-    const success_msg = "恭喜，你的弹幕正常显示！"
-    const error_msg = "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)"
-    const error_send_msg = "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
+    //全局配置选项
+    const globalConfig = {
+        // 高级功能开关：true=启用所有功能，false=仅基础检测
+        advancedFeaturesEnabled: true,
+        
+        // 脚本配置
+        msgTime: 7000,              // 脚本加载消息计时器
+        exp: 1,                      // 弹幕同屏发送次数，默认为1
+        successSend: true,           // 发送成功的回调开关，如不需要启用则填写false
+        
+        // 弹幕样式配置
+        banColorSystem: "#90EE90",   // 系统屏蔽弹幕颜色
+        banColorUser: "deepskyblue", // 主播屏蔽弹幕颜色
+        successColor: "DarkCyan",    // 成功颜色
+        errorColor: "Crimson",       // 错误颜色
+        
+        // 弹幕显示位置
+        dmLeft: '-16%',              // 默认固定从左侧开始滚动的位置
+        dmTop: '50%',                // 弹幕距离顶部的位置，如果想要随机可以替换为：${Math.random() * 100}%
+        dmFontSize: '36px',          // 弹幕字号
+        
+        // 弹幕提示消息
+        banSystemMsg: "发送失败：你的弹幕被系统秒删，修改关键词后重新发吧",
+        banUserMsg: "发送失败：你的弹幕被主播删除，看来主播不喜欢某些关键词",
+        successLoadMsg: "弹幕反诈与防河蟹脚本加载完毕！",
+        successMsg: "恭喜，你的弹幕正常显示！",
+        errorMsg: "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)",
+        errorSendMsg: "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
+    };
 
     // 敏感词管理器初始化配置
+    // 此处的所有配置仅限高级功能生效，如关闭了高级选项请忽略
     const sensitiveWordsConfig = {
         // 默认配置参数，仅在初始化时有效，初始化配置修改此处
         defaultConfig: {
@@ -60,12 +58,16 @@
             caseSensitive: false,
             // 是否启用模糊匹配
             fuzzyMatch: true,
+            // 是否启用分词器测试
+            enableSegmentationTest: false,
             // 是否默认显示弹幕记录板
             showLogBoxByDefault: true,
             // 弹幕记录板容量限制
             logBoxCapacity: 50,
             // 默认导出格式：'txt' 或 'csv'
             exportFormat: 'csv',
+            // 敏感词库最大容量限制
+            maxWordsCapacity: 1000,
             // 默认敏感词列表
             words: [
                 '敏感', '违规', '不当', '禁止', '限制', '屏蔽', '过滤',
@@ -87,16 +89,118 @@
         enabled: true,
         caseSensitive: false,
         fuzzyMatch: true,
+        enableSegmentationTest: false,
         showLogBoxByDefault: true,
         logBoxCapacity: 50,
         exportFormat: 'csv'
     };
+
+    // 控制台样式化输出工具
+    const consoleStyle = {
+        // 成功类型：绿色渐变
+        success: function(message) {
+            console.log(
+                `%c✅ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #986fee, #8695e6, #68b7dd, #18d7d3); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        },
+        // 错误类型：红色渐变
+        error: function(message) {
+            console.log(
+                `%c❌ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #ff6b6b, #ff8e8e, #ffa5a5); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        },
+        // 警告类型：橙色渐变
+        warning: function(message) {
+            console.log(
+                `%c⚠️ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #ff9800, #ffb84d, #ffcc80); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        },
+        // 信息类型：蓝色渐变
+        info: function(message) {
+            console.log(
+                `%cℹ️ ${message}`,
+                'color: #fff; background: linear-gradient(270deg, #2196f3, #64b5f6, #90caf9); padding: 8px 15px; border-radius: 0 15px 0 15px; font-weight: bold;'
+            );
+        }
+    };
+
+    // Segmentit分词器测试功能
+    let segmentit = null;
+    let segmentitLoaded = false;
+
+    // 初始化segmentit分词器
+    function initSegmentit() {
+        if (segmentitLoaded) return;
+
+        try {
+            // 检查segmentit是否可用
+            if (typeof Segmentit !== 'undefined' && Segmentit.Segment && Segmentit.useDefault) {
+                segmentit = Segmentit.useDefault(new Segmentit.Segment());
+                segmentitLoaded = true;
+                consoleStyle.success("Segmentit分词器初始化完成");
+            } else {
+                consoleStyle.error("Segmentit分词器未加载");
+            }
+        } catch (error) {
+            console.error("初始化Segmentit分词器时出错:", error);
+        }
+    }
+
+    // 确保分词器可用的函数
+    function ensureSegmentitReady() {
+        if (!segmentitLoaded) {
+            initSegmentit();
+        }
+        return segmentitLoaded && segmentit && segmentit.doSegment;
+    }
+
+    function testSegmentitSegmentation(text) {
+        if (!text) return;
+
+        // 检查是否启用了分词器测试，如未启用则不执行分词输出
+        if (!sensitiveWordsConfig.enableSegmentationTest) {
+            return;
+        }
+
+        try {
+            // 检查segmentit是否可用
+            if (segmentitLoaded && segmentit && segmentit.doSegment) {
+                const segments = segmentit.doSegment(text);
+                // 提取分词结果
+                const words = segments.map(item => item.w);
+                console.log("=== Segmentit分词测试 ===");
+                console.log("弹幕内容:", text);
+                console.log("分词结果:", words);
+                console.log("分词数量:", words.length);
+                console.log("详细结果:", segments);
+                console.log("========================");
+                return words;
+            } else {
+                console.log("=== Segmentit分词测试 ===");
+                console.log("弹幕内容:", text);
+                console.log("segmentit分词器未就绪，使用简单分词:", text.split(''));
+                console.log("========================");
+                return text.split('');
+            }
+        } catch (error) {
+            console.error("segmentit分词测试出错:", error);
+            console.log("=== Segmentit分词测试 ===");
+            console.log("弹幕内容:", text);
+            console.log("分词失败，使用简单分词:", text.split(''));
+            console.log("========================");
+            return text.split('');
+        }
+    }
 
     // 重置所有选项到默认配置
     function resetToDefaultConfig() {
         sensitiveWordsConfig.enabled = sensitiveWordsConfig.defaultConfig.enabled;
         sensitiveWordsConfig.caseSensitive = sensitiveWordsConfig.defaultConfig.caseSensitive;
         sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
+        sensitiveWordsConfig.enableSegmentationTest = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
         sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
@@ -113,7 +217,7 @@
                     const config = JSON.parse(saved);
                     return config.words || sensitiveWordsConfig.defaultConfig.words;
                 } catch (e) {
-                    console.warn('解析敏感词配置失败，使用默认配置');
+                    consoleStyle.warning('解析本地敏感词配置失败，使用系统默认配置');
                     return sensitiveWordsConfig.defaultConfig.words;
                 }
             }
@@ -128,6 +232,7 @@
                 enabled: sensitiveWordsConfig.enabled,
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
+                enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
@@ -138,12 +243,22 @@
         // 添加敏感词
         addWord(word) {
             const words = this.getWords();
-            if (!words.includes(word)) {
-                words.push(word);
-                this.saveWords(words);
-                return true;
+            const maxCapacity = sensitiveWordsConfig.defaultConfig.maxWordsCapacity;
+            
+            // 检查是否已存在
+            if (words.includes(word)) {
+                return false;
             }
-            return false;
+            
+            // 检查容量限制并打印到控制台日志
+            if (words.length >= maxCapacity) {
+                consoleStyle.warning(`敏感词库已达到最大容量限制 (${maxCapacity}个)，无法添加更多敏感词`);
+                return false;
+            }
+            
+            words.push(word);
+            this.saveWords(words);
+            return true;
         },
 
         // 删除敏感词
@@ -160,53 +275,118 @@
 
         // 检测敏感词
         detectSensitiveWords(text) {
+            if (!globalConfig.advancedFeaturesEnabled) return [];
             if (!sensitiveWordsConfig.enabled || !text) return [];
+            if (text.length > 80) return []; // 忽略超长文本扫描，弹幕最多一次性发40字，不能一次发这么多出来
 
             const words = this.getWords();
+            if (words.length === 0) return []; // 空词库保护，跳过扫描
+
             const detectedWords = [];
             const textToCheck = sensitiveWordsConfig.caseSensitive ? text : text.toLowerCase();
 
-            words.forEach(word => {
-                const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
-
-                if (sensitiveWordsConfig.fuzzyMatch) {
-                    // 模糊匹配：检查是否包含敏感词
-                    if (textToCheck.includes(wordToCheck)) {
+            if (sensitiveWordsConfig.fuzzyMatch) {
+                // 模糊匹配：检查是否包含敏感词，处理重叠情况
+                words.forEach(word => {
+                    const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
+                    let searchIndex = 0;
+                    
+                    // 查找所有匹配的位置，限制检测数量最多为8个
+                    while (searchIndex < textToCheck.length && detectedWords.length < 8) {
+                        const foundIndex = textToCheck.indexOf(wordToCheck, searchIndex);
+                        if (foundIndex === -1) break;
+                        
                         detectedWords.push({
                             word: word,
                             originalWord: word,
-                            startIndex: textToCheck.indexOf(wordToCheck),
-                            endIndex: textToCheck.indexOf(wordToCheck) + wordToCheck.length
+                            startIndex: foundIndex,
+                            endIndex: foundIndex + wordToCheck.length
                         });
+                        
+                        searchIndex = foundIndex + 1;
+                    }
+                });
+                
+                // 去重：移除重叠的检测结果，保留较长的敏感词
+                const filteredWords = this.removeOverlappingDetections(detectedWords);
+                detectedWords.length = 0; // 清空原数组
+                detectedWords.push(...filteredWords); // 添加过滤后的结果
+            } else {
+                // 精确匹配：使用分词器进行分词后精确匹配
+                if (ensureSegmentitReady()) {
+                    try {
+                        const segments = segmentit.doSegment(text);
+                        console.log("精确匹配模式 - 分词结果:", segments.map(s => s.w));
+                        
+                        // 对每个敏感词检查是否在分词结果中
+                        words.forEach(word => {
+                            const wordToCheck = sensitiveWordsConfig.caseSensitive ? word : word.toLowerCase();
+                            segments.forEach((segment, index) => {
+                                const segmentToCheck = sensitiveWordsConfig.caseSensitive ? segment.w : segment.w.toLowerCase();
+                                
+                                // 精确匹配：分词结果必须完全等于敏感词
+                                if (segmentToCheck === wordToCheck) {
+                                    console.log(`精确匹配检测到敏感词: "${word}" 在分词: "${segment.w}"`);
+                                    detectedWords.push({
+                                        word: word,
+                                        originalWord: word,
+                                        segment: segment.w,
+                                        segmentIndex: index,
+                                        startIndex: text.indexOf(segment.w),
+                                        endIndex: text.indexOf(segment.w) + segment.w.length
+                                    });
+                                }
+                            });
+                        });
+                    } catch (error) {
+                        console.error("精确匹配分词出错:", error);
                     }
                 } else {
-                    // 精确匹配：使用正则表达式
-                    const regex = new RegExp(`\\b${wordToCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-                    let match;
-                    while ((match = regex.exec(textToCheck)) !== null) {
-                        detectedWords.push({
-                            word: word,
-                            originalWord: word,
-                            startIndex: match.index,
-                            endIndex: match.index + match[0].length
-                        });
-                    }
+                    consoleStyle.error("分词器未就绪，精确匹配功能不可用");
                 }
-            });
+            }
 
             return detectedWords;
         },
 
+        // 移除重叠的检测结果，保留较长的敏感词
+        removeOverlappingDetections(detectedWords) {
+            if (detectedWords.length <= 1) return detectedWords;
+            
+            // 按开始位置排序
+            detectedWords.sort((a, b) => a.startIndex - b.startIndex);
+            
+            const result = [detectedWords[0]]; // 直接添加第一个
+            
+            for (let i = 1; i < detectedWords.length; i++) {
+                const current = detectedWords[i];
+                const last = result[result.length - 1];
+                
+                // 检查是否重叠
+                if (current.startIndex >= last.endIndex) {
+                    // 不重叠：直接添加
+                    result.push(current);
+                } else {
+                    // 重叠：保留较长的
+                    if (current.endIndex - current.startIndex > last.endIndex - last.startIndex) {
+                        result[result.length - 1] = current;
+                    }
+                }
+            }
+            
+            return result;
+        },
+
         // 高亮敏感词
-        highlightSensitiveWords(text) {
-            const detectedWords = this.detectSensitiveWords(text);
-            if (detectedWords.length === 0) return text;
+        highlightSensitiveWords(text, detectedWords = null) {
+            const words = detectedWords || this.detectSensitiveWords(text);
+            if (words.length === 0) return text;
 
             // 按位置排序，从后往前替换避免位置偏移
-            detectedWords.sort((a, b) => b.startIndex - a.startIndex);
+            words.sort((a, b) => b.startIndex - a.startIndex);
 
             let highlightedText = text;
-            detectedWords.forEach(item => {
+            words.forEach(item => {
                 const before = highlightedText.substring(0, item.startIndex);
                 const sensitive = highlightedText.substring(item.startIndex, item.endIndex);
                 const after = highlightedText.substring(item.endIndex);
@@ -567,15 +747,17 @@
         caseCheckbox: null,
         fuzzyCheckbox: null,
         showLogBoxCheckbox: null,
+        segmentationCheckbox: null,
         capacityInput: null,
         exportFormatSelect: null,
 
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput, exportFormatSelect) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
             this.showLogBoxCheckbox = showLogBoxCheckbox;
+            this.segmentationCheckbox = segmentationCheckbox;
             this.capacityInput = capacityInput;
             this.exportFormatSelect = exportFormatSelect;
         },
@@ -586,6 +768,7 @@
             if (this.caseCheckbox) this.caseCheckbox.checked = sensitiveWordsConfig.defaultConfig.caseSensitive;
             if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
             if (this.showLogBoxCheckbox) this.showLogBoxCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+            if (this.segmentationCheckbox) this.segmentationCheckbox.checked = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
             if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
             if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
         }
@@ -971,8 +1154,18 @@
 
         const showLogBoxLabel = document.createElement('label');
         showLogBoxLabel.htmlFor = 'show-logbox-check';
-        showLogBoxLabel.textContent = '默认显示弹幕记录板（取消则发送弹幕后展示）';
+        showLogBoxLabel.textContent = '页面加载立即显示记录板';
         showLogBoxLabel.style.marginLeft = '5px';
+
+        const segmentationCheckbox = document.createElement('input');
+        segmentationCheckbox.type = 'checkbox';
+        segmentationCheckbox.id = 'segmentation-test-check';
+        segmentationCheckbox.checked = sensitiveWordsConfig.enableSegmentationTest;
+
+        const segmentationLabel = document.createElement('label');
+        segmentationLabel.htmlFor = 'segmentation-test-check';
+        segmentationLabel.textContent = '启用分词器结果输出';
+        segmentationLabel.style.marginLeft = '5px';
 
         // 添加容量配置
         const capacityLabel = document.createElement('label');
@@ -1028,7 +1221,6 @@
 
         const exportFormatSelect = document.createElement('select');
         exportFormatSelect.id = 'export-format-select';
-        exportFormatSelect.value = sensitiveWordsConfig.exportFormat;
         exportFormatSelect.style.cssText = `
             width: 125px;
             padding: 8px 12px;
@@ -1069,6 +1261,9 @@
         exportFormatSelect.appendChild(txtOption);
         exportFormatSelect.appendChild(csvOption);
 
+        // 设置默认值（在添加选项之后）
+        exportFormatSelect.value = sensitiveWordsConfig.exportFormat;
+
         // 选择器焦点效果
         exportFormatSelect.onfocus = () => {
             exportFormatSelect.style.borderColor = '#00a1d6';
@@ -1098,6 +1293,9 @@
         configSection.appendChild(showLogBoxCheckbox);
         configSection.appendChild(showLogBoxLabel);
         configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(segmentationCheckbox);
+        configSection.appendChild(segmentationLabel);
+        configSection.appendChild(document.createElement('br'));
         configSection.appendChild(capacityLabel);
         configSection.appendChild(capacityInput);
         configSection.appendChild(capacityUnitLabel);
@@ -1107,7 +1305,7 @@
         configSection.appendChild(exportFormatDesc);
 
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, capacityInput, exportFormatSelect);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -1190,10 +1388,50 @@
         // 更新敏感词列表显示
         function updateWordList() {
             const words = sensitiveWordManager.getWords();
+            const maxCapacity = sensitiveWordsConfig.defaultConfig.maxWordsCapacity;
+            const currentCount = words.length;
+            const remainingCount = maxCapacity - currentCount;
+            
             wordList.innerHTML = '';
 
+            // 添加容量信息显示
+            const capacityInfo = document.createElement('div');
+            
+            // 动态计算容量阈值
+            const warningThreshold = Math.ceil(maxCapacity * 0.3);  // 剩余30%
+            const alertThreshold = Math.ceil(maxCapacity * 0.05);  // 剩余5%
+            
+            capacityInfo.style.cssText = `
+                padding: 8px 15px;
+                margin-bottom: 10px;
+                background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
+                border-radius: 6px;
+                border: 1px solid rgba(33, 150, 243, 0.3);
+                font-size: 12px;
+                color: #2196F3;
+                text-align: center;
+            `;
+            
+            if (remainingCount <= alertThreshold) {
+                // 空间严重不足，红色严重警告
+                capacityInfo.style.color = '#f44336';
+                capacityInfo.style.background = 'linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(244, 67, 54, 0.05))';
+                capacityInfo.style.borderColor = 'rgba(244, 67, 54, 0.3)';
+            } else if (remainingCount <= warningThreshold) {
+                // 空间不足，即将达到阈值，橙色提醒
+                capacityInfo.style.color = '#ff9800';
+                capacityInfo.style.background = 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05))';
+                capacityInfo.style.borderColor = 'rgba(255, 152, 0, 0.3)';
+            }
+            
+            capacityInfo.textContent = `词库容量: ${currentCount}/${maxCapacity} (剩余 ${remainingCount} 个)`;
+            wordList.appendChild(capacityInfo);
+
             if (words.length === 0) {
-                wordList.innerHTML = '<div style="color: #888; text-align: center;">暂无敏感词</div>';
+                const emptyDiv = document.createElement('div');
+                emptyDiv.style.cssText = 'color: #888; text-align: center; padding: 20px;';
+                emptyDiv.textContent = '暂无敏感词';
+                wordList.appendChild(emptyDiv);
                 return;
             }
 
@@ -1338,12 +1576,20 @@
                 return;
             }
 
-            if (sensitiveWordManager.addWord(word)) {
+            const result = sensitiveWordManager.addWord(word);
+            if (result === true) {
                 addInput.value = '';
                 updateWordList();
                 showNotification('敏感词添加成功！', 'success');
             } else {
-                showNotification('该敏感词已存在！', 'warning');
+                // 检查是否是容量限制导致的失败
+                const words = sensitiveWordManager.getWords();
+                const maxCapacity = sensitiveWordsConfig.defaultConfig.maxWordsCapacity;
+                if (words.length >= maxCapacity) {
+                    showNotification(`词库已达最大容量限制 (${maxCapacity}个)，无法添加更多敏感词！`, 'error');
+                } else {
+                    showNotification('该敏感词已存在！', 'warning');
+                }
             }
         };
 
@@ -1383,6 +1629,7 @@
             sensitiveWordsConfig.caseSensitive = caseCheckbox.checked;
             sensitiveWordsConfig.fuzzyMatch = fuzzyCheckbox.checked;
             sensitiveWordsConfig.showLogBoxByDefault = showLogBoxCheckbox.checked;
+            sensitiveWordsConfig.enableSegmentationTest = segmentationCheckbox.checked;
             sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
 
             // 验证并设置容量值
@@ -1400,6 +1647,7 @@
                 enabled: sensitiveWordsConfig.enabled,
                 caseSensitive: sensitiveWordsConfig.caseSensitive,
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
+                enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
@@ -2132,7 +2380,7 @@
             el.style.willChange = 'auto';
         });
 
-        console.log('[弹幕反诈] 清理完成');
+        consoleStyle.info('[弹幕反诈] 检测到页面关闭，资源清理已完成');
     }
 
     // 页面卸载时清理资源
@@ -2169,6 +2417,9 @@
 
     // 记录弹幕到文本框 - 优化版本，支持敏感词高亮
     function logDanmuToBox(content, type) {
+        // 检查全局开关
+        if (!globalConfig.advancedFeaturesEnabled) return;
+        
         const logBox = domCache.getLogBox();
 
         if (logBox.getAttribute('data-closed') === 'true') {
@@ -2188,8 +2439,8 @@
 
         // 弹幕内容被系统活主播屏蔽，对弹幕进行敏感词检测
         if (type === 'system' || type === 'user') {
-            highlightedContent = sensitiveWordManager.highlightSensitiveWords(content);
             detectedWords = sensitiveWordManager.detectSensitiveWords(content);
+            highlightedContent = sensitiveWordManager.highlightSensitiveWords(content, detectedWords);
         }
 
         // 使用DocumentFragment批量操作DOM
@@ -2255,6 +2506,12 @@
 
     // 从本地存储初始化敏感词配置
     function initSensitiveWordsConfig() {
+        // 如果高级功能关闭，直接返回，不读取配置
+        if (!globalConfig.advancedFeaturesEnabled) {
+            consoleStyle.info('检测到高级功能关闭，使用基础检测模式')
+            return;
+        }
+        
         const saved = localStorage.getItem('danmu_sensitive_words');
         if (saved) {
             try {
@@ -2262,6 +2519,7 @@
                 sensitiveWordsConfig.enabled = config.enabled !== undefined ? config.enabled : sensitiveWordsConfig.defaultConfig.enabled;
                 sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : sensitiveWordsConfig.defaultConfig.caseSensitive;
                 sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : sensitiveWordsConfig.defaultConfig.fuzzyMatch;
+                sensitiveWordsConfig.enableSegmentationTest = config.enableSegmentationTest !== undefined ? config.enableSegmentationTest : sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
                 sensitiveWordsConfig.showLogBoxByDefault = config.showLogBoxByDefault !== undefined ? config.showLogBoxByDefault : sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
@@ -2269,7 +2527,7 @@
                     sensitiveWordsConfig.words = config.words;
                 }
             } catch (e) {
-                console.warn('解析敏感词配置失败，使用默认配置');
+                consoleStyle.warning('解析敏感词配置失败，使用默认配置');
                 // 如果解析失败，清除损坏的配置
                 localStorage.removeItem('danmu_sensitive_words');
             }
@@ -2282,8 +2540,8 @@
     // 初始化配置
     initSensitiveWordsConfig();
 
-    // 根据配置决定是否默认显示弹幕记录板
-    if (sensitiveWordsConfig.showLogBoxByDefault) {
+    // 根据全局开关和配置决定是否默认显示弹幕记录板
+    if (globalConfig.advancedFeaturesEnabled && sensitiveWordsConfig.showLogBoxByDefault) {
         // 延迟创建弹幕记录板，确保页面加载完成
         setTimeout(() => {
             createDanmuLogBox();
@@ -2292,16 +2550,23 @@
 
     let windowCtx = self.window;
     if (self.unsafeWindow) {
-        console.log("[弹幕反诈] use unsafeWindow mode");
+        consoleStyle.success(`弹幕反诈脚本已加载 | ${globalConfig.successLoadMsg}`);
         setTimeout(() => {
-           showFloatingMessage(success_load_msg, success_color);
-        }, msg_time);
+           showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
+        }, globalConfig.msgTime);
         windowCtx = self.unsafeWindow;
     } else {
-        console.log("[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)");
+        consoleStyle.error(`unsafeWindow模式不可用 | ${globalConfig.errorMsg}`);
         setTimeout(() => {
-           showFloatingMessage(error_msg, error_color);
-        }, msg_time);
+           showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
+        }, globalConfig.msgTime);
+    }
+
+    // 初始化segmentit分词器
+    if (globalConfig.advancedFeaturesEnabled) {
+        setTimeout(() => {
+            initSegmentit();
+        }, 1000);
     }
 
     // 优化URL检查 - 使用正则表达式和缓存
@@ -2333,10 +2598,10 @@
         div.textContent = message;
         div.style.cssText = `
             position: fixed;
-            top: ${dm_top};
-            left: ${dm_left};
+            top: ${globalConfig.dmTop};
+            left: ${globalConfig.dmLeft};
             color: ${color};
-            font-size: ${dm_fontSize};
+            font-size: ${globalConfig.dmFontSize};
             z-index: 9999;
             white-space: nowrap;
             will-change: transform;
@@ -2388,6 +2653,9 @@
                 try {
                     const extraData = JSON.parse(data.data.mode_info.extra);
                     if (extraData.content) {
+                        // 对所有弹幕进行segmentit分词测试
+                        testSegmentitSegmentation(extraData.content);
+                        
                         // 根据屏蔽类型进行针对性输出
                         if (data.msg === "f") {
                             console.log("系统屏蔽弹幕:", extraData.content);
@@ -2407,8 +2675,8 @@
 
             // 处理响应数据
             if (data.code === 0 && data.msg === "f") {
-                for(let i = 0; i < exp; i++){
-                    showFloatingMessage(ban_system_msg, ban_color_system);
+                for(let i = 0; i < globalConfig.exp; i++){
+                    showFloatingMessage(globalConfig.banSystemMsg, globalConfig.banColorSystem);
                 }
                 data.code = -101;
                 data.message = "你的弹幕没发出去，你被骗了，系统干的";
@@ -2416,8 +2684,8 @@
                 delete data.msg;
                 delete data.data;
             } else if (data.code === 0 && data.msg === "k") {
-                for(let i = 0; i < exp; i++){
-                    showFloatingMessage(ban_user_msg, ban_color_user);
+                for(let i = 0; i < globalConfig.exp; i++){
+                    showFloatingMessage(globalConfig.banUserMsg, globalConfig.banColorUser);
                 }
                 data.code = -101;
                 data.message = "你的弹幕没发出去，你被骗了，主播干的";
@@ -2426,8 +2694,8 @@
                 delete data.data;
             } else {
                 console.log("恭喜，您的弹幕正常显示！");
-                if(success_send === true){
-                    showFloatingMessage(success_msg, success_color);
+                if(globalConfig.successSend === true){
+                    showFloatingMessage(globalConfig.successMsg, globalConfig.successColor);
                 }
             }
 
@@ -2440,7 +2708,7 @@
             resolve(newRes);
         } catch (error) {
             console.error("处理弹幕响应时出错:", error);
-            showFloatingMessage(error_send_msg, error_color);
+            showFloatingMessage(globalConfig.errorSendMsg, globalConfig.errorColor);
             reject(error);
         }
     }
@@ -2470,12 +2738,12 @@
                         await processDanmuResponse(data, r, resolve, reject);
                     } catch (e) {
                         console.error("处理弹幕请求时出错:", e);
-                        showFloatingMessage(error_send_msg, error_color);
+                        showFloatingMessage(globalConfig.errorSendMsg, globalConfig.errorColor);
                         reject(e);
                     }
                 }).catch(e => {
                     console.error("弹幕请求失败:", e);
-                    showFloatingMessage(error_send_msg, error_color);
+                    showFloatingMessage(globalConfig.errorSendMsg, globalConfig.errorColor);
                     reject(e);
                 });
             });
