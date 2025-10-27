@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.7
+// @version      3.5.8
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -118,6 +118,12 @@
             return text.split('');
         }
     }
+
+
+    const globalConfig = {
+        // 高级功能开关：true=启用所有功能，false=仅基础检测
+        advancedFeaturesEnabled: true
+    };
 
     // 敏感词管理器初始化配置
     const sensitiveWordsConfig = {
@@ -246,6 +252,7 @@
 
         // 检测敏感词
         detectSensitiveWords(text) {
+            if (!globalConfig.advancedFeaturesEnabled) return [];
             if (!sensitiveWordsConfig.enabled || !text) return [];
             if (text.length > 80) return []; // 忽略超长文本扫描，弹幕最多一次性发40字，不能一次发这么多出来
 
@@ -2387,6 +2394,9 @@
 
     // 记录弹幕到文本框 - 优化版本，支持敏感词高亮
     function logDanmuToBox(content, type) {
+        // 检查全局开关
+        if (!globalConfig.advancedFeaturesEnabled) return;
+        
         const logBox = domCache.getLogBox();
 
         if (logBox.getAttribute('data-closed') === 'true') {
@@ -2473,6 +2483,11 @@
 
     // 从本地存储初始化敏感词配置
     function initSensitiveWordsConfig() {
+        // 如果高级功能关闭，直接返回，不读取配置
+        if (!globalConfig.advancedFeaturesEnabled) {
+            return;
+        }
+        
         const saved = localStorage.getItem('danmu_sensitive_words');
         if (saved) {
             try {
@@ -2500,8 +2515,8 @@
     // 初始化配置
     initSensitiveWordsConfig();
 
-    // 根据配置决定是否默认显示弹幕记录板
-    if (sensitiveWordsConfig.showLogBoxByDefault) {
+    // 根据全局开关和配置决定是否默认显示弹幕记录板
+    if (globalConfig.advancedFeaturesEnabled && sensitiveWordsConfig.showLogBoxByDefault) {
         // 延迟创建弹幕记录板，确保页面加载完成
         setTimeout(() => {
             createDanmuLogBox();
@@ -2523,9 +2538,11 @@
     }
 
     // 初始化segmentit分词器
-    setTimeout(() => {
-        initSegmentit();
-    }, 1000);
+    if (globalConfig.advancedFeaturesEnabled) {
+        setTimeout(() => {
+            initSegmentit();
+        }, 1000);
+    }
 
     // 优化URL检查 - 使用正则表达式和缓存
     const SEND_DM_URL_REGEX = /api\.live\.bilibili\.com\/msg\/send/;
