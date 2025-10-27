@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.5.8
+// @version      3.5.9
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -16,40 +16,6 @@
 
 (function() {
     'use strict';
-
-    //系统过滤器权限高于主播，出现关键词后系统会优先删除你的弹幕，其次才是主播
-
-    //脚本加载消息计时器
-    const msg_time = 7000
-
-    //弹幕同屏发送次数，默认为1
-    const exp = 1
-
-    //不同对象屏蔽后显示的弹幕颜色，支持英文和16进制颜色编码
-    const ban_color_system = "#90EE90"
-    const ban_color_user = "deepskyblue"
-    const success_color = "DarkCyan"
-    const error_color = "Crimson"
-
-    // 默认固定从左侧开始滚动的位置
-    const dm_left = '-16%'
-
-    //弹幕距离顶部的位置，如果想要随机可以替换为：`${Math.random() * 100}%`
-    const dm_top = '50%'
-
-    //弹幕字号
-    const dm_fontSize = '36px'
-
-    //发送成功的回调开关，如不需要启用则填写false
-    const success_send = true
-
-    //弹幕内容
-    const ban_system_msg = "发送失败：你的弹幕被系统秒删，修改关键词后重新发吧"
-    const ban_user_msg = "发送失败：你的弹幕被主播删除，看来主播不喜欢某些关键词"
-    const success_load_msg = "弹幕反诈与防河蟹脚本加载完毕！"
-    const success_msg = "恭喜，你的弹幕正常显示！"
-    const error_msg = "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)"
-    const error_send_msg = "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
 
     // Segmentit分词器测试功能
     let segmentit = null;
@@ -119,13 +85,38 @@
         }
     }
 
-
+    //全局配置选项
     const globalConfig = {
         // 高级功能开关：true=启用所有功能，false=仅基础检测
-        advancedFeaturesEnabled: true
+        advancedFeaturesEnabled: true,
+        
+        // 脚本配置
+        msgTime: 7000,              // 脚本加载消息计时器
+        exp: 1,                      // 弹幕同屏发送次数，默认为1
+        successSend: true,           // 发送成功的回调开关，如不需要启用则填写false
+        
+        // 弹幕样式配置
+        banColorSystem: "#90EE90",   // 系统屏蔽弹幕颜色
+        banColorUser: "deepskyblue", // 主播屏蔽弹幕颜色
+        successColor: "DarkCyan",    // 成功颜色
+        errorColor: "Crimson",       // 错误颜色
+        
+        // 弹幕显示位置
+        dmLeft: '-16%',              // 默认固定从左侧开始滚动的位置
+        dmTop: '50%',                // 弹幕距离顶部的位置，如果想要随机可以替换为：${Math.random() * 100}%
+        dmFontSize: '36px',          // 弹幕字号
+        
+        // 弹幕提示消息
+        banSystemMsg: "发送失败：你的弹幕被系统秒删，修改关键词后重新发吧",
+        banUserMsg: "发送失败：你的弹幕被主播删除，看来主播不喜欢某些关键词",
+        successLoadMsg: "弹幕反诈与防河蟹脚本加载完毕！",
+        successMsg: "恭喜，你的弹幕正常显示！",
+        errorMsg: "[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)",
+        errorSendMsg: "发送失败：捕获到的未知错误，详情请检查控制台输出日志！"
     };
 
     // 敏感词管理器初始化配置
+    // 此处的所有配置仅限高级功能生效，如关闭了高级选项请忽略
     const sensitiveWordsConfig = {
         // 默认配置参数，仅在初始化时有效，初始化配置修改此处
         defaultConfig: {
@@ -2527,14 +2518,14 @@
     if (self.unsafeWindow) {
         console.log("[弹幕反诈] use unsafeWindow mode");
         setTimeout(() => {
-           showFloatingMessage(success_load_msg, success_color);
-        }, msg_time);
+           showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
+        }, globalConfig.msgTime);
         windowCtx = self.unsafeWindow;
     } else {
         console.log("[弹幕反诈] use window mode (your userscript extensions not support unsafeWindow)");
         setTimeout(() => {
-           showFloatingMessage(error_msg, error_color);
-        }, msg_time);
+           showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
+        }, globalConfig.msgTime);
     }
 
     // 初始化segmentit分词器
@@ -2573,10 +2564,10 @@
         div.textContent = message;
         div.style.cssText = `
             position: fixed;
-            top: ${dm_top};
-            left: ${dm_left};
+            top: ${globalConfig.dmTop};
+            left: ${globalConfig.dmLeft};
             color: ${color};
-            font-size: ${dm_fontSize};
+            font-size: ${globalConfig.dmFontSize};
             z-index: 9999;
             white-space: nowrap;
             will-change: transform;
@@ -2650,8 +2641,8 @@
 
             // 处理响应数据
             if (data.code === 0 && data.msg === "f") {
-                for(let i = 0; i < exp; i++){
-                    showFloatingMessage(ban_system_msg, ban_color_system);
+                for(let i = 0; i < globalConfig.exp; i++){
+                    showFloatingMessage(globalConfig.banSystemMsg, globalConfig.banColorSystem);
                 }
                 data.code = -101;
                 data.message = "你的弹幕没发出去，你被骗了，系统干的";
@@ -2659,8 +2650,8 @@
                 delete data.msg;
                 delete data.data;
             } else if (data.code === 0 && data.msg === "k") {
-                for(let i = 0; i < exp; i++){
-                    showFloatingMessage(ban_user_msg, ban_color_user);
+                for(let i = 0; i < globalConfig.exp; i++){
+                    showFloatingMessage(globalConfig.banUserMsg, globalConfig.banColorUser);
                 }
                 data.code = -101;
                 data.message = "你的弹幕没发出去，你被骗了，主播干的";
@@ -2669,8 +2660,8 @@
                 delete data.data;
             } else {
                 console.log("恭喜，您的弹幕正常显示！");
-                if(success_send === true){
-                    showFloatingMessage(success_msg, success_color);
+                if(globalConfig.successSend === true){
+                    showFloatingMessage(globalConfig.successMsg, globalConfig.successColor);
                 }
             }
 
@@ -2683,7 +2674,7 @@
             resolve(newRes);
         } catch (error) {
             console.error("处理弹幕响应时出错:", error);
-            showFloatingMessage(error_send_msg, error_color);
+            showFloatingMessage(globalConfig.errorSendMsg, globalConfig.errorColor);
             reject(error);
         }
     }
@@ -2713,12 +2704,12 @@
                         await processDanmuResponse(data, r, resolve, reject);
                     } catch (e) {
                         console.error("处理弹幕请求时出错:", e);
-                        showFloatingMessage(error_send_msg, error_color);
+                        showFloatingMessage(globalConfig.errorSendMsg, globalConfig.errorColor);
                         reject(e);
                     }
                 }).catch(e => {
                     console.error("弹幕请求失败:", e);
-                    showFloatingMessage(error_send_msg, error_color);
+                    showFloatingMessage(globalConfig.errorSendMsg, globalConfig.errorColor);
                     reject(e);
                 });
             });
