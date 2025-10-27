@@ -351,7 +351,7 @@
 
         // 移除重叠的检测结果，保留较长的敏感词
         removeOverlappingDetections(detectedWords) {
-            if (detectedWords.length <= 1) return detectedWords;
+            if (detectedWords.length <= 1) return [...detectedWords];
             
             // 按开始位置排序
             detectedWords.sort((a, b) => a.startIndex - b.startIndex);
