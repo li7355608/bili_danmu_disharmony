@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7
+// @version      3.7.1
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -2643,18 +2643,39 @@
         }
     }
 
+    // 检查是否在正确的页面环境（有 #live-player 元素）
+    // 避免在天选时刻弹窗等 iframe 中显示加载消息和处理弹幕
+    function isInValidLiveRoom() {
+        try {
+            // 检查是否存在 #live-player 元素
+            const livePlayerDiv = document.getElementById('live-player');
+            if (!livePlayerDiv) {
+                return false;
+            }
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
     let windowCtx = self.window;
     if (self.unsafeWindow) {
         consoleStyle.success(`弹幕反诈脚本已加载 | ${globalConfig.successLoadMsg}`);
-        setTimeout(() => {
-           showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
-        }, globalConfig.msgTime);
+        // 只在真实直播间页面显示加载成功消息
+        if (isInValidLiveRoom()) {
+            setTimeout(() => {
+               showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
+            }, globalConfig.msgTime);
+        }
         windowCtx = self.unsafeWindow;
     } else {
         consoleStyle.error(`unsafeWindow模式不可用 | ${globalConfig.errorMsg}`);
-        setTimeout(() => {
-           showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
-        }, globalConfig.msgTime);
+        // 只在真实直播间页面显示错误消息
+        if (isInValidLiveRoom()) {
+            setTimeout(() => {
+               showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
+            }, globalConfig.msgTime);
+        }
     }
 
     // 初始化segmentit分词器
@@ -2743,6 +2764,13 @@
     // 异步处理弹幕响应数据
     async function processDanmuResponse(data, originalResponse, resolve, reject) {
         try {
+            // 检查是否在正确的页面环境
+            if (!isInValidLiveRoom()) {
+                // 不在真实直播间页面，不处理
+                resolve(originalResponse);
+                return;
+            }
+
             // 在修改数据前提取弹幕内容
             if (data.data && data.data.mode_info && data.data.mode_info.extra) {
                 try {
@@ -2810,6 +2838,12 @@
 
     const originFetchBLDMAF = windowCtx.fetch;
     windowCtx.fetch = (...arg) => {
+        // 检查是否在正确的页面环境
+        if (!isInValidLiveRoom()) {
+            // 不在真实直播间页面，直接调用原始 fetch
+            return originFetchBLDMAF(...arg);
+        }
+
         let arg0 = arg[0];
         let url = "";
         switch (typeof arg0) {
