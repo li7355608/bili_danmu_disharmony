@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.11
+// @version      3.7.12
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -93,6 +93,8 @@
             showLoadMsg: true,
             // 是否启用精简模式：开启后发送成功的弹幕不再显示浮字，仅失败时显示
             slimDanmu: false,
+            // 是否允许弹幕重叠：true=连发弹幕飘屏叠加（默认）；false=同屏仅一条飘屏，新弹幕替换旧弹幕
+            allowDanmuOverlap: true,
             // 敏感词库最大容量限制
             maxWordsCapacity: 1000,
             // 默认敏感词列表
@@ -124,7 +126,8 @@
         logBoxCapacity: 50,
         exportFormat: 'csv',
         showLoadMsg: true,
-        slimDanmu: false
+        slimDanmu: false,
+        allowDanmuOverlap: true
     };
 
     // 控制台样式化输出工具
@@ -241,6 +244,7 @@
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
         sensitiveWordsConfig.showLoadMsg = sensitiveWordsConfig.defaultConfig.showLoadMsg;
         sensitiveWordsConfig.slimDanmu = sensitiveWordsConfig.defaultConfig.slimDanmu;
+        sensitiveWordsConfig.allowDanmuOverlap = sensitiveWordsConfig.defaultConfig.allowDanmuOverlap;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
     }
 
@@ -277,7 +281,8 @@
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat,
                 showLoadMsg: sensitiveWordsConfig.showLoadMsg,
-                slimDanmu: sensitiveWordsConfig.slimDanmu
+                slimDanmu: sensitiveWordsConfig.slimDanmu,
+                allowDanmuOverlap: sensitiveWordsConfig.allowDanmuOverlap
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
         },
@@ -1136,9 +1141,10 @@
         exportFormatSelect: null,
         showLoadMsgCheckbox: null,
         slimDanmuCheckbox: null,
+        allowOverlapCheckbox: null,
 
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox, allowOverlapCheckbox) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
@@ -1148,6 +1154,7 @@
             this.exportFormatSelect = exportFormatSelect;
             this.showLoadMsgCheckbox = showLoadMsgCheckbox;
             this.slimDanmuCheckbox = slimDanmuCheckbox;
+            this.allowOverlapCheckbox = allowOverlapCheckbox;
         },
 
         // 重置配置选项UI到默认状态
@@ -1161,6 +1168,7 @@
             if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
             if (this.showLoadMsgCheckbox) this.showLoadMsgCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLoadMsg;
             if (this.slimDanmuCheckbox) this.slimDanmuCheckbox.checked = sensitiveWordsConfig.defaultConfig.slimDanmu;
+            if (this.allowOverlapCheckbox) this.allowOverlapCheckbox.checked = sensitiveWordsConfig.defaultConfig.allowDanmuOverlap;
         }
     };
 
@@ -1588,6 +1596,23 @@
         slimDanmuDesc.style.fontSize = '11px';
         slimDanmuDesc.style.marginLeft = '10px';
 
+        // 添加“允许弹幕重叠”开关
+        const allowOverlapCheckbox = document.createElement('input');
+        allowOverlapCheckbox.type = 'checkbox';
+        allowOverlapCheckbox.id = 'allow-overlap-check';
+        allowOverlapCheckbox.checked = sensitiveWordsConfig.allowDanmuOverlap;
+
+        const allowOverlapLabel = document.createElement('label');
+        allowOverlapLabel.htmlFor = 'allow-overlap-check';
+        allowOverlapLabel.textContent = '允许弹幕重叠';
+        allowOverlapLabel.style.marginLeft = '5px';
+
+        const allowOverlapDesc = document.createElement('span');
+        allowOverlapDesc.textContent = '关闭后连发弹幕同屏仅显示一条，新弹幕替换旧弹幕';
+        allowOverlapDesc.style.color = '#888';
+        allowOverlapDesc.style.fontSize = '11px';
+        allowOverlapDesc.style.marginLeft = '10px';
+
         // 弹幕记录板显示模式（四态下拉框）
         const logBoxModeConfigs = [
             { value: 'always', label: '永远展示' },
@@ -1788,6 +1813,10 @@
         configSection.appendChild(slimDanmuLabel);
         configSection.appendChild(slimDanmuDesc);
         configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(allowOverlapCheckbox);
+        configSection.appendChild(allowOverlapLabel);
+        configSection.appendChild(allowOverlapDesc);
+        configSection.appendChild(document.createElement('br'));
 
         // 添加选择框
         configSection.appendChild(showLogBoxLabel);
@@ -1802,7 +1831,7 @@
         configSection.appendChild(exportFormatDesc);
 
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox, allowOverlapCheckbox);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -2133,6 +2162,7 @@
             sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
             sensitiveWordsConfig.showLoadMsg = showLoadMsgCheckbox.checked;
             sensitiveWordsConfig.slimDanmu = slimDanmuCheckbox.checked;
+            sensitiveWordsConfig.allowDanmuOverlap = allowOverlapCheckbox.checked;
 
             // 验证并设置容量值
             const capacityValue = parseInt(capacityInput.value);
@@ -2157,7 +2187,8 @@
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat,
                 showLoadMsg: sensitiveWordsConfig.showLoadMsg,
-                slimDanmu: sensitiveWordsConfig.slimDanmu
+                slimDanmu: sensitiveWordsConfig.slimDanmu,
+                allowDanmuOverlap: sensitiveWordsConfig.allowDanmuOverlap
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
 
@@ -3106,6 +3137,7 @@
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
                 sensitiveWordsConfig.showLoadMsg = config.showLoadMsg !== undefined ? config.showLoadMsg : sensitiveWordsConfig.defaultConfig.showLoadMsg;
                 sensitiveWordsConfig.slimDanmu = config.slimDanmu !== undefined ? config.slimDanmu : sensitiveWordsConfig.defaultConfig.slimDanmu;
+                sensitiveWordsConfig.allowDanmuOverlap = config.allowDanmuOverlap !== undefined ? config.allowDanmuOverlap : sensitiveWordsConfig.defaultConfig.allowDanmuOverlap;
                 if (config.words && Array.isArray(config.words)) {
                     sensitiveWordsConfig.words = config.words;
                 }
@@ -3214,7 +3246,14 @@
     }
 
     function showFloatingMessage(message, color) {
+        // 关闭弹幕重叠时：先移除已在飘屏的同类元素，保证同屏仅一条
+        if (!sensitiveWordsConfig.allowDanmuOverlap) {
+            const existing = document.querySelectorAll('.danmu-float-active');
+            existing.forEach(el => el.remove());
+        }
+
         const div = document.createElement('div');
+        div.className = 'danmu-float-active';
         div.textContent = message;
         div.style.cssText = `
             position: fixed;
