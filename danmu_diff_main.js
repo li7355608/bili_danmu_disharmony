@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.3
+// @version      3.7.4
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -713,6 +713,111 @@
         logBox.appendChild(contentArea);
         document.body.appendChild(logBox);
 
+        // 迷你按钮（折叠态）：关闭记录板后显示的悬浮入口，点击恢复记录板
+        // 折叠态与展开态互斥显示
+        const miniBtn = document.createElement('div');
+        miniBtn.id = 'danmu-log-mini';
+        miniBtn.title = '点击展开弹幕记录板（可拖动）';
+        miniBtn.textContent = '📝';
+        const miniSize = 44;
+        // 初始位置：右上角（与 logBox 默认位置一致）
+        const miniInitLeft = Math.max(0, window.innerWidth - miniSize - 20);
+        const miniInitTop = 20;
+        miniBtn.style.cssText = `
+            position: fixed;
+            left: ${miniInitLeft}px;
+            top: ${miniInitTop}px;
+            width: ${miniSize}px;
+            height: ${miniSize}px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #00a1d6, #0077b6);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: grab;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0, 161, 214, 0.5);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        `;
+        miniBtn.onmouseenter = () => {
+            miniBtn.style.transform = 'scale(1.08)';
+            miniBtn.style.boxShadow = '0 6px 16px rgba(0, 161, 214, 0.7)';
+        };
+        miniBtn.onmouseleave = () => {
+            miniBtn.style.transform = 'scale(1)';
+            miniBtn.style.boxShadow = '0 4px 12px rgba(0, 161, 214, 0.5)';
+        };
+        document.body.appendChild(miniBtn);
+
+        // 迷你按钮拖拽功能（独立于 logBox 拖拽，使用 left/top 定位）
+        // 区分点击与拖拽：拖拽位移 > 5px 时不触发展开
+        let miniIsDragging = false;
+        let miniDragStarted = false;
+        let miniStartMouseX = 0;
+        let miniStartMouseY = 0;
+        let miniStartLeft = miniInitLeft;
+        let miniStartTop = miniInitTop;
+        let miniDragThrottle = null;
+
+        miniBtn.addEventListener('mousedown', (e) => {
+            // 仅响应主键（左键）
+            if (e.button !== 0) return;
+            miniIsDragging = true;
+            miniDragStarted = false;
+            miniStartMouseX = e.clientX;
+            miniStartMouseY = e.clientY;
+            miniStartLeft = parseFloat(miniBtn.style.left) || miniInitLeft;
+            miniStartTop = parseFloat(miniBtn.style.top) || miniInitTop;
+            miniBtn.style.cursor = 'grabbing';
+            miniBtn.style.willChange = 'left, top';
+            e.preventDefault();
+        });
+
+        const miniDragMove = (e) => {
+            if (!miniIsDragging) return;
+            if (miniDragThrottle) return;
+            miniDragThrottle = requestAnimationFrame(() => {
+                const deltaX = e.clientX - miniStartMouseX;
+                const deltaY = e.clientY - miniStartMouseY;
+                // 位移超过阈值才视为拖拽，避免点击误判
+                if (!miniDragStarted && Math.abs(deltaX) + Math.abs(deltaY) > 5) {
+                    miniDragStarted = true;
+                }
+                if (miniDragStarted) {
+                    let newLeft = miniStartLeft + deltaX;
+                    let newTop = miniStartTop + deltaY;
+                    // 边界保护：保证按钮至少有部分可见在视口内
+                    newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - miniSize));
+                    newTop = Math.max(0, Math.min(newTop, window.innerHeight - miniSize));
+                    miniBtn.style.left = newLeft + 'px';
+                    miniBtn.style.top = newTop + 'px';
+                }
+                miniDragThrottle = null;
+            });
+        };
+
+        const miniDragEnd = (e) => {
+            if (!miniIsDragging) return;
+            miniIsDragging = false;
+            miniBtn.style.cursor = 'grab';
+            miniBtn.style.willChange = 'auto';
+            if (miniDragThrottle) {
+                cancelAnimationFrame(miniDragThrottle);
+                miniDragThrottle = null;
+            }
+            // 若本次未发生拖拽，交给 click 处理展开逻辑
+        };
+
+        document.addEventListener('mousemove', miniDragMove);
+        document.addEventListener('mouseup', miniDragEnd);
+
         // 更新保存按钮文本显示当前导出格式
         updateSaveButtonText();
 
@@ -740,9 +845,19 @@
         };
 
         closeBtn.onclick = () => {
+            // 折叠为迷你按钮：隐藏大面板，显示迷你入口
             logBox.style.display = 'none';
-            // 添加重新打开功能
+            miniBtn.style.display = 'flex';
+            // 标记为已关闭，保留 logDanmuToBox 复活逻辑的语义
             logBox.setAttribute('data-closed', 'true');
+        };
+
+        // 迷你按钮点击恢复：隐藏迷你，显示大面板（仅未发生拖拽时生效）
+        miniBtn.onclick = () => {
+            if (miniDragStarted) return;
+            miniBtn.style.display = 'none';
+            logBox.style.display = 'block';
+            logBox.removeAttribute('data-closed');
         };
 
         // 添加拖拽功能 - 优化版本
@@ -2583,9 +2698,11 @@
         }
 
         if (logBox.getAttribute('data-closed') === 'true') {
-            // 如果弹幕框被关闭，重新显示
+            // 如果弹幕框被关闭（折叠为迷你按钮），重新显示并同步隐藏迷你入口
             logBox.style.display = 'block';
             logBox.removeAttribute('data-closed');
+            const mini = document.getElementById('danmu-log-mini');
+            if (mini) mini.style.display = 'none';
         }
 
         const contentArea = domCache.getContentArea();
