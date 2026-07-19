@@ -869,6 +869,8 @@
         let xOffset = 0;
         let yOffset = 0;
         let dragThrottleTimer = null;
+        // 拖拽开始时记录 logBox 的视觉矩形，用于边界夹紧（resize:both 下尺寸会变，需动态读取）
+        let dragStartRect = null;
 
         titleBar.addEventListener('mousedown', dragStart);
         document.addEventListener('mousemove', drag);
@@ -882,6 +884,9 @@
                 isDragging = true;
                 // 启用硬件加速
                 logBox.style.willChange = 'transform';
+                // 记录拖拽起点时 logBox 的当前位置与尺寸
+                // getBoundingClientRect 返回经 transform 后的视觉位置
+                dragStartRect = logBox.getBoundingClientRect();
             }
         }
 
@@ -892,9 +897,31 @@
 
                 dragThrottleTimer = requestAnimationFrame(() => {
                     e.preventDefault();
-                    currentX = e.clientX - initialX;
-                    currentY = e.clientY - initialY;
+                    let deltaX = e.clientX - initialX;
+                    let deltaY = e.clientY - initialY;
 
+                    // 边界夹紧（与迷你按钮同款策略）：保证 logBox 完整可见在视口内
+                    // 基准使用 dragStartRect（视觉矩形），resize:both 下尺寸也以起点为准避免抖动
+                    if (dragStartRect) {
+                        const vw = window.innerWidth;
+                        const vh = window.innerHeight;
+                        const minLeft = 0;
+                        const maxLeft = Math.max(0, vw - dragStartRect.width);
+                        const minTop = 0;
+                        const maxTop = Math.max(0, vh - dragStartRect.height);
+
+                        const rawLeft = dragStartRect.left + deltaX;
+                        const rawTop = dragStartRect.top + deltaY;
+                        const clampedLeft = Math.max(minLeft, Math.min(rawLeft, maxLeft));
+                        const clampedTop = Math.max(minTop, Math.min(rawTop, maxTop));
+
+                        // 反推夹紧后的 deltaX/deltaY
+                        deltaX = clampedLeft - dragStartRect.left;
+                        deltaY = clampedTop - dragStartRect.top;
+                    }
+
+                    currentX = deltaX;
+                    currentY = deltaY;
                     xOffset = currentX;
                     yOffset = currentY;
 
@@ -916,6 +943,8 @@
             }
             // 禁用硬件加速以节省资源
             logBox.style.willChange = 'auto';
+            // 清理拖拽起点矩形引用
+            dragStartRect = null;
         }
 
         return logBox;
