@@ -1529,6 +1529,41 @@
         fuzzyLabel.textContent = '模糊匹配';
         fuzzyLabel.style.marginLeft = '5px';
 
+        // 添加“加载完毕提示”开关
+        const showLoadMsgCheckbox = document.createElement('input');
+        showLoadMsgCheckbox.type = 'checkbox';
+        showLoadMsgCheckbox.id = 'show-load-msg-check';
+        showLoadMsgCheckbox.checked = sensitiveWordsConfig.showLoadMsg;
+        showLoadMsgCheckbox.style.marginTop = '15px';
+
+        const showLoadMsgLabel = document.createElement('label');
+        showLoadMsgLabel.htmlFor = 'show-load-msg-check';
+        showLoadMsgLabel.textContent = '脚本加载完毕显示提示弹幕';
+        showLoadMsgLabel.style.marginLeft = '5px';
+
+        const showLoadMsgDesc = document.createElement('span');
+        showLoadMsgDesc.textContent = '关闭后脚本加载成功弹幕不再显示';
+        showLoadMsgDesc.style.color = '#888';
+        showLoadMsgDesc.style.fontSize = '11px';
+        showLoadMsgDesc.style.marginLeft = '10px';
+
+        // 添加“精简弹幕”开关
+        const slimDanmuCheckbox = document.createElement('input');
+        slimDanmuCheckbox.type = 'checkbox';
+        slimDanmuCheckbox.id = 'slim-danmu-check';
+        slimDanmuCheckbox.checked = sensitiveWordsConfig.slimDanmu;
+
+        const slimDanmuLabel = document.createElement('label');
+        slimDanmuLabel.htmlFor = 'slim-danmu-check';
+        slimDanmuLabel.textContent = '精简弹幕';
+        slimDanmuLabel.style.marginLeft = '5px';
+
+        const slimDanmuDesc = document.createElement('span');
+        slimDanmuDesc.textContent = '发送成功不再显示弹幕，仅发送失败时显示';
+        slimDanmuDesc.style.color = '#888';
+        slimDanmuDesc.style.fontSize = '11px';
+        slimDanmuDesc.style.marginLeft = '10px';
+
         // 弹幕记录板显示模式（四态下拉框）
         const logBoxModeConfigs = [
             { value: 'always', label: '永远展示' },
@@ -1728,41 +1763,6 @@
         configSection.appendChild(segmentationCheckbox);
         configSection.appendChild(segmentationLabel);
         configSection.appendChild(document.createElement('br'));
-
-        // 添加“加载完毕提示”开关
-        const showLoadMsgCheckbox = document.createElement('input');
-        showLoadMsgCheckbox.type = 'checkbox';
-        showLoadMsgCheckbox.id = 'show-load-msg-check';
-        showLoadMsgCheckbox.checked = sensitiveWordsConfig.showLoadMsg;
-        showLoadMsgCheckbox.style.marginTop = '15px';
-
-        const showLoadMsgLabel = document.createElement('label');
-        showLoadMsgLabel.htmlFor = 'show-load-msg-check';
-        showLoadMsgLabel.textContent = '脚本加载完毕显示提示弹幕';
-        showLoadMsgLabel.style.marginLeft = '5px';
-
-        const showLoadMsgDesc = document.createElement('span');
-        showLoadMsgDesc.textContent = '关闭后脚本加载成功弹幕不再显示';
-        showLoadMsgDesc.style.color = '#888';
-        showLoadMsgDesc.style.fontSize = '11px';
-        showLoadMsgDesc.style.marginLeft = '10px';
-
-        // 添加“精简弹幕”开关
-        const slimDanmuCheckbox = document.createElement('input');
-        slimDanmuCheckbox.type = 'checkbox';
-        slimDanmuCheckbox.id = 'slim-danmu-check';
-        slimDanmuCheckbox.checked = sensitiveWordsConfig.slimDanmu;
-
-        const slimDanmuLabel = document.createElement('label');
-        slimDanmuLabel.htmlFor = 'slim-danmu-check';
-        slimDanmuLabel.textContent = '精简弹幕';
-        slimDanmuLabel.style.marginLeft = '5px';
-
-        const slimDanmuDesc = document.createElement('span');
-        slimDanmuDesc.textContent = '发送成功不再显示弹幕，仅发送失败时显示';
-        slimDanmuDesc.style.color = '#888';
-        slimDanmuDesc.style.fontSize = '11px';
-        slimDanmuDesc.style.marginLeft = '10px';
 
         configSection.appendChild(showLoadMsgCheckbox);
         configSection.appendChild(showLoadMsgLabel);
