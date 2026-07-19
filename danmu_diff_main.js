@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.8
+// @version      3.7.9
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -89,6 +89,8 @@
             logBoxCapacity: 50,
             // 默认导出格式：'txt' 或 'csv'
             exportFormat: 'csv',
+            // 是否在脚本加载完毕时显示浮动提示弹幕
+            showLoadMsg: true,
             // 敏感词库最大容量限制
             maxWordsCapacity: 1000,
             // 默认敏感词列表
@@ -118,7 +120,8 @@
         logBoxPos: null,
         logBoxCollapsed: false,
         logBoxCapacity: 50,
-        exportFormat: 'csv'
+        exportFormat: 'csv',
+        showLoadMsg: true
     };
 
     // 控制台样式化输出工具
@@ -233,6 +236,7 @@
         sensitiveWordsConfig.logBoxCollapsed = sensitiveWordsConfig.defaultConfig.logBoxCollapsed;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
+        sensitiveWordsConfig.showLoadMsg = sensitiveWordsConfig.defaultConfig.showLoadMsg;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
     }
 
@@ -267,7 +271,8 @@
                 logBoxPos: sensitiveWordsConfig.logBoxPos,
                 logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
-                exportFormat: sensitiveWordsConfig.exportFormat
+                exportFormat: sensitiveWordsConfig.exportFormat,
+                showLoadMsg: sensitiveWordsConfig.showLoadMsg
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
         },
@@ -1114,9 +1119,10 @@
         segmentationCheckbox: null,
         capacityInput: null,
         exportFormatSelect: null,
+        showLoadMsgCheckbox: null,
 
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
@@ -1124,6 +1130,7 @@
             this.segmentationCheckbox = segmentationCheckbox;
             this.capacityInput = capacityInput;
             this.exportFormatSelect = exportFormatSelect;
+            this.showLoadMsgCheckbox = showLoadMsgCheckbox;
         },
 
         // 重置配置选项UI到默认状态
@@ -1135,6 +1142,7 @@
             if (this.segmentationCheckbox) this.segmentationCheckbox.checked = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
             if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
             if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
+            if (this.showLoadMsgCheckbox) this.showLoadMsgCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLoadMsg;
         }
     };
 
@@ -1712,6 +1720,23 @@
         configSection.appendChild(segmentationCheckbox);
         configSection.appendChild(segmentationLabel);
         configSection.appendChild(document.createElement('br'));
+
+        // 添加“加载完毕提示”开关
+        const showLoadMsgCheckbox = document.createElement('input');
+        showLoadMsgCheckbox.type = 'checkbox';
+        showLoadMsgCheckbox.id = 'show-load-msg-check';
+        showLoadMsgCheckbox.checked = sensitiveWordsConfig.showLoadMsg;
+        showLoadMsgCheckbox.style.marginTop = '15px';
+
+        const showLoadMsgLabel = document.createElement('label');
+        showLoadMsgLabel.htmlFor = 'show-load-msg-check';
+        showLoadMsgLabel.textContent = '脚本加载完毕显示提示弹幕';
+        showLoadMsgLabel.style.marginLeft = '5px';
+
+        configSection.appendChild(showLoadMsgCheckbox);
+        configSection.appendChild(showLoadMsgLabel);
+        configSection.appendChild(document.createElement('br'));
+
         configSection.appendChild(showLogBoxLabel);
         configSection.appendChild(logBoxModeSelect);
         configSection.appendChild(document.createElement('br'));
@@ -1724,7 +1749,7 @@
         configSection.appendChild(exportFormatDesc);
 
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -2053,6 +2078,7 @@
             sensitiveWordsConfig.showLogBoxByDefault = (sensitiveWordsConfig.logBoxDisplayMode === 'always');
             sensitiveWordsConfig.enableSegmentationTest = segmentationCheckbox.checked;
             sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
+            sensitiveWordsConfig.showLoadMsg = showLoadMsgCheckbox.checked;
 
             // 验证并设置容量值
             const capacityValue = parseInt(capacityInput.value);
@@ -2075,7 +2101,8 @@
                 logBoxPos: sensitiveWordsConfig.logBoxPos,
                 logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
-                exportFormat: sensitiveWordsConfig.exportFormat
+                exportFormat: sensitiveWordsConfig.exportFormat,
+                showLoadMsg: sensitiveWordsConfig.showLoadMsg
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
 
@@ -3022,6 +3049,7 @@
                 sensitiveWordsConfig.logBoxCollapsed = (typeof config.logBoxCollapsed === 'boolean') ? config.logBoxCollapsed : sensitiveWordsConfig.defaultConfig.logBoxCollapsed;
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
+                sensitiveWordsConfig.showLoadMsg = config.showLoadMsg !== undefined ? config.showLoadMsg : sensitiveWordsConfig.defaultConfig.showLoadMsg;
                 if (config.words && Array.isArray(config.words)) {
                     sensitiveWordsConfig.words = config.words;
                 }
@@ -3082,7 +3110,7 @@
     if (self.unsafeWindow) {
         consoleStyle.success(`弹幕反诈脚本已加载 | ${globalConfig.successLoadMsg}`);
         // 只在真实直播间页面显示加载成功消息
-        if (isInValidLiveRoom()) {
+        if (isInValidLiveRoom() && sensitiveWordsConfig.showLoadMsg) {
             setTimeout(() => {
                 showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
             }, globalConfig.msgTime);
