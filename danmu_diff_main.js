@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.12
+// @version      3.7.13
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -25,6 +25,7 @@
 // @match        *://live.bilibili.com/blanc/9*
 // @run-at       document-start
 // @grant        unsafeWindow
+// @grant        GM_registerMenuCommand
 // @require      https://cdn.jsdelivr.net/npm/segmentit@2.0.3/dist/umd/segmentit.min.js
 // @namespace    https://greasyfork.org/users/1390050
 // @downloadURL  https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.user.js
@@ -3423,4 +3424,15 @@
             return originFetchBLDMAF(...arg);
         }
     };
+
+    // ============================================================
+    // 油猴菜单项：提供「永久关闭」后的恢复入口
+    // 通过 GM_registerMenuCommand 注册到油猴菜单，无论记录板是否可见均可调用。
+    // ============================================================
+    if (typeof GM_registerMenuCommand === 'function') {
+        // 菜单项 1：直接打开管理面板（用户可在面板内手动改显示模式）
+        GM_registerMenuCommand('打开弹幕管理面板', () => {
+            showSensitiveWordManager();
+        });
+    }
 })();
