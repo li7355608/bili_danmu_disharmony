@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.10
+// @version      3.7.11
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -487,6 +487,12 @@
             }
         }
 
+        // logBox 尺寸约束（resize: both 下夹紧用户拖拽范围）
+        const LOG_BOX_MIN_W = 300;
+        const LOG_BOX_MIN_H = 200;
+        const LOG_BOX_MAX_W_VW = 25;   // 单位 vw
+        const LOG_BOX_MAX_H_VH = 50;   // 单位 vh
+
         const logBox = document.createElement('div');
         logBox.id = 'danmu-log-box';
         logBox.style.cssText = `
@@ -505,6 +511,10 @@
             font-family: 'Microsoft YaHei', sans-serif;
             overflow: hidden;
             resize: both;
+            min-width: ${LOG_BOX_MIN_W}px;
+            min-height: ${LOG_BOX_MIN_H}px;
+            max-width: ${LOG_BOX_MAX_W_VW}vw;
+            max-height: ${LOG_BOX_MAX_H_VH}vh;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
             user-select: none;
             -webkit-user-select: none;
