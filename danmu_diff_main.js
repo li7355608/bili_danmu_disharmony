@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.5
+// @version      3.7.6
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -719,19 +719,20 @@
         document.body.appendChild(logBox);
 
         // ============================================================
-        // logBox(展开) 与 miniBtn(折叠) 共享位置状态：左上角对齐
-        // 持久化于 localStorage 的 danmu_sensitive_words.logBoxPos
-        // 坐标系：position:fixed 的 left/top，与 miniBtn 一致
+        // logBox(展开) 与 miniBtn(折叠) 共享位置状态：按 mini 在视口的方位选 logBox 对齐角
+        // 持久化于 localStorage 的 danmu_sensitive_words.logBoxPos（仅存 mini 位置）
+        // 坐标系：position:fixed 的 left/top（mini），logBox 按锚角使用 left/right + top/bottom
         // ============================================================
         const LOG_BOX_DEFAULT_W = 320;
         const LOG_BOX_DEFAULT_H = 250;
         const MINI_SIZE = 44;
 
-        // 计算默认位置（右上角，与原视觉位置一致）
+        // 计算默认位置（右上角，与原视觉位置一致）：始终用右上角锚，保证默认视觉无回归
         function computeDefaultPos() {
             return {
-                left: Math.max(0, window.innerWidth - LOG_BOX_DEFAULT_W - 20),
-                top: 20
+                left: Math.max(0, window.innerWidth - MINI_SIZE - 20),
+                top: 20,
+                corner: 'tr'
             };
         }
 
@@ -745,14 +746,79 @@
             };
         }
 
-        // 应用位置到 logBox：清掉 right 让 left/top 生效（logBox 已 position:fixed）
-        function applyPosToLogBox(left, top) {
-            logBox.style.right = '';
+        // 计算 logBox 相对 mini 的对齐锚角
+        // 9 宫格判定：以 mini 的中心点在视口的方位划分
+        //   左：center.x < vw * 1/3
+        //   右：center.x > vw * 2/3
+        //   上：center.y < vh * 1/3
+        //   下：center.y > vh * 2/3
+        // 返回 corner 双字母含义：
+        //   第一位 t(op)/c(enter)/b(ottom) —— logBox 顶边相对 mini 顶边的关系（c 视为 t，附带夹紧）
+        //   第二位 l(eft)/c(enter)/r(ight) —— logBox 左边相对 mini 左边的关系（c 视为 l，附带夹紧）
+        // 实际对齐角仅 4 种：tl / tr / bl / br（中心类退化为附带夹紧的角对齐）
+        function computeAnchor(miniLeft, miniTop) {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const cx = miniLeft + MINI_SIZE / 2;
+            const cy = miniTop + MINI_SIZE / 2;
+
+            const isRight = (cx > vw * 2 / 3);   // mini 偏右 → logBox 用右上/右下角对齐
+            const isLeft = (cx < vw / 3);    // mini 偏左 → logBox 用左上/左下角对齐
+            const isBottom = (cy > vh * 2 / 3);  // mini 偏下 → logBox 用左下/右下角对齐
+            const isTop = (cy < vh / 3);     // mini 偏上 → logBox 用左上/右上角对齐
+
+            const v = isBottom ? 'b' : 't';   // 中部视为顶部对齐 + 夹紧
+            const h = isRight ? 'r' : 'l';    // 中部视为左侧对齐 + 夹紧
+            return v + h;                     // tl / tr / bl / br
+        }
+
+        // 应用位置到 logBox：按 mini 位置计算锚角，把 logBox 对应角贴到 mini 同边
+        // 同时保证 logBox 完整可见（夹紧）
+        function applyPosToLogBox(miniLeft, miniTop) {
+            const logBoxRect = logBox.getBoundingClientRect();
+            const w = logBoxRect.width || LOG_BOX_DEFAULT_W;
+            const h = logBoxRect.height || LOG_BOX_DEFAULT_H;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const anchor = computeAnchor(miniLeft, miniTop);
+
+            // 重置所有定位属性，避免上次遗留的 right/bottom 影响本次
+            logBox.style.transform = '';
+
+            let left, top;
+            switch (anchor) {
+                case 'tr': // 右上角对齐：logBox 右边 = mini 右边
+                    left = miniLeft + MINI_SIZE - w;
+                    top = miniTop;
+                    break;
+                case 'bl': // 左下角对齐：logBox 下边 = mini 下边
+                    left = miniLeft;
+                    top = miniTop + MINI_SIZE - h;
+                    break;
+                case 'br': // 右下角对齐：logBox 右下 = mini 右下
+                    left = miniLeft + MINI_SIZE - w;
+                    top = miniTop + MINI_SIZE - h;
+                    break;
+                case 'tl': // 左上角对齐（默认）
+                default:
+                    left = miniLeft;
+                    top = miniTop;
+                    break;
+            }
+
+            // 夹紧：保证 logBox 完整可见在视口内
+            left = Math.max(0, Math.min(left, Math.max(0, vw - w)));
+            top = Math.max(0, Math.min(top, Math.max(0, vh - h)));
+
+            // 用 left/top 写入（尝试过 right/bottom 切换会导致 resize 时坐标系混乱，统一用 left/top 更稳）
             logBox.style.left = left + 'px';
             logBox.style.top = top + 'px';
-            // 清掉历史可能残留的 transform（旧版本拖拽遗留）
-            logBox.style.transform = '';
+            logBox.style.right = '';
+            logBox.style.bottom = '';
         }
+
+        // 暴露给外部作用域（logDanmuToBox 复活分支需调用，避免重复实现锚角算法）
+        logBox._applyPosByMini = applyPosToLogBox;
 
         // 应用位置到 mini
         function applyPosToMini(left, top) {
@@ -925,6 +991,10 @@
         // 迷你按钮点击恢复：隐藏迷你，显示大面板（仅未发生拖拽时生效）
         miniBtn.onclick = () => {
             if (miniDragStarted) return;
+            // 展开前重算 logBox 锚角位置（应对 mini 被拖到边缘/窗口尺寸变化）
+            const miniLeft = parseFloat(miniBtn.style.left) || 0;
+            const miniTop = parseFloat(miniBtn.style.top) || 0;
+            applyPosToLogBox(miniLeft, miniTop);
             miniBtn.style.display = 'none';
             logBox.style.display = 'block';
             logBox.removeAttribute('data-closed');
@@ -972,8 +1042,15 @@
                     const h = dragStartRect ? dragStartRect.height : LOG_BOX_DEFAULT_H;
                     const clamped = clampPos(dragStartLeft + deltaX, dragStartTop + deltaY, w, h);
 
-                    // 同步给 logBox 与 mini（自动同步位置：关闭后 mini 即在此处）
-                    applyPosToLogBox(clamped.left, clamped.top);
+                    // logBox 直接写入 left/top（拖拽过程禁止反向调 applyPosToLogBox，否则会按锚角重新贴位造成跳动）
+                    logBox.style.right = '';
+                    logBox.style.bottom = '';
+                    logBox.style.transform = '';
+                    logBox.style.left = clamped.left + 'px';
+                    logBox.style.top = clamped.top + 'px';
+
+                    // mini 跟到 logBox 左上角同位置（关闭后 mini 即出现在此）
+                    // 注意：mini 位置即"持久化真源"，下次展开会用此位置重算 logBox 锚角
                     applyPosToMini(clamped.left, clamped.top);
 
                     dragThrottleTimer = null;
@@ -2777,10 +2854,18 @@
 
         if (logBox.getAttribute('data-closed') === 'true') {
             // 如果弹幕框被关闭（折叠为迷你按钮），重新显示并同步隐藏迷你入口
+            // 重算锚角位置（应对 mini 位置变化或窗口尺寸变化）
+            const mini = document.getElementById('danmu-log-mini');
+            if (mini) {
+                const miniLeft = parseFloat(mini.style.left) || 0;
+                const miniTop = parseFloat(mini.style.top) || 0;
+                if (typeof logBox._applyPosByMini === 'function') {
+                    logBox._applyPosByMini(miniLeft, miniTop);
+                }
+                mini.style.display = 'none';
+            }
             logBox.style.display = 'block';
             logBox.removeAttribute('data-closed');
-            const mini = document.getElementById('danmu-log-mini');
-            if (mini) mini.style.display = 'none';
         }
 
         const contentArea = domCache.getContentArea();
