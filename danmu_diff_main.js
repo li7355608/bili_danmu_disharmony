@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.1
+// @version      3.7.2
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -26,9 +26,9 @@
 // @run-at       document-start
 // @grant        unsafeWindow
 // @require      https://cdn.jsdelivr.net/npm/segmentit@2.0.3/dist/umd/segmentit.min.js
-// @namespace https://greasyfork.org/users/1390050
-// @downloadURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.user.js
-// @updateURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.meta.js
+// @namespace    https://greasyfork.org/users/1390050
+// @downloadURL  https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.user.js
+// @updateURL    https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.meta.js
 // ==/UserScript==
 
 (function() {
@@ -1666,7 +1666,7 @@
                 localStorage.removeItem('danmu_sensitive_words');
 
                 // 重置敏感词配置对象到默认状态
-                resetToDefaultConfig()
+                resetToDefaultConfig();
 
                 // 重置敏感词管理器到默认状态
                 sensitiveWordManager.saveWords(sensitiveWordsConfig.words);
@@ -2582,12 +2582,11 @@
         }
     }
 
-
     // 从本地存储初始化敏感词配置
     function initSensitiveWordsConfig() {
         // 如果高级功能关闭，直接返回，不读取配置
         if (!globalConfig.advancedFeaturesEnabled) {
-            consoleStyle.info('检测到高级功能关闭，使用基础检测模式')
+            consoleStyle.info('检测到高级功能关闭，使用基础检测模式');
             return;
         }
 
@@ -2612,7 +2611,7 @@
             }
         } else {
             // 如果没有保存的配置，确保使用默认值
-            resetToDefaultConfig()
+            resetToDefaultConfig();
         }
     }
 
@@ -2664,7 +2663,7 @@
         // 只在真实直播间页面显示加载成功消息
         if (isInValidLiveRoom()) {
             setTimeout(() => {
-               showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
+                showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
             }, globalConfig.msgTime);
         }
         windowCtx = self.unsafeWindow;
@@ -2673,7 +2672,7 @@
         // 只在真实直播间页面显示错误消息
         if (isInValidLiveRoom()) {
             setTimeout(() => {
-               showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
+                showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
             }, globalConfig.msgTime);
         }
     }
@@ -2798,7 +2797,7 @@
 
             // 处理响应数据
             if (data.code === 0 && data.msg === "f") {
-                for(let i = 0; i < globalConfig.exp; i++){
+                for (let i = 0; i < globalConfig.exp; i++) {
                     showFloatingMessage(globalConfig.banSystemMsg, globalConfig.banColorSystem);
                 }
                 data.code = -101;
@@ -2807,7 +2806,7 @@
                 delete data.msg;
                 delete data.data;
             } else if (data.code === 0 && data.msg === "k") {
-                for(let i = 0; i < globalConfig.exp; i++){
+                for (let i = 0; i < globalConfig.exp; i++) {
                     showFloatingMessage(globalConfig.banUserMsg, globalConfig.banColorUser);
                 }
                 data.code = -101;
@@ -2817,7 +2816,7 @@
                 delete data.data;
             } else {
                 console.log("恭喜，您的弹幕正常显示！");
-                if(globalConfig.successSend === true){
+                if (globalConfig.successSend === true) {
                     showFloatingMessage(globalConfig.successMsg, globalConfig.successColor);
                 }
             }
