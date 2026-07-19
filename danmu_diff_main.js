@@ -1499,6 +1499,7 @@
         configLabel.style.display = 'block';
         configLabel.style.marginBottom = '10px';
 
+        // 检测开关
         const enableCheckbox = document.createElement('input');
         enableCheckbox.type = 'checkbox';
         enableCheckbox.id = 'enable-sensitive-check';
@@ -1509,6 +1510,7 @@
         enableLabel.textContent = '启用敏感词检测';
         enableLabel.style.marginLeft = '5px';
 
+        // 区分大小写开关
         const caseCheckbox = document.createElement('input');
         caseCheckbox.type = 'checkbox';
         caseCheckbox.id = 'case-sensitive-check';
@@ -1519,6 +1521,7 @@
         caseLabel.textContent = '区分大小写';
         caseLabel.style.marginLeft = '5px';
 
+        // 添加模糊匹配开关
         const fuzzyCheckbox = document.createElement('input');
         fuzzyCheckbox.type = 'checkbox';
         fuzzyCheckbox.id = 'fuzzy-match-check';
@@ -1528,6 +1531,17 @@
         fuzzyLabel.htmlFor = 'fuzzy-match-check';
         fuzzyLabel.textContent = '模糊匹配';
         fuzzyLabel.style.marginLeft = '5px';
+
+        // 添加启用分词器结果输出开关
+        const segmentationCheckbox = document.createElement('input');
+        segmentationCheckbox.type = 'checkbox';
+        segmentationCheckbox.id = 'segmentation-test-check';
+        segmentationCheckbox.checked = sensitiveWordsConfig.enableSegmentationTest;
+
+        const segmentationLabel = document.createElement('label');
+        segmentationLabel.htmlFor = 'segmentation-test-check';
+        segmentationLabel.textContent = '启用分词器结果输出';
+        segmentationLabel.style.marginLeft = '5px';
 
         // 添加“加载完毕提示”开关
         const showLoadMsgCheckbox = document.createElement('input');
@@ -1626,16 +1640,6 @@
             }
         `;
         document.head.appendChild(logBoxModeSelectStyle);
-
-        const segmentationCheckbox = document.createElement('input');
-        segmentationCheckbox.type = 'checkbox';
-        segmentationCheckbox.id = 'segmentation-test-check';
-        segmentationCheckbox.checked = sensitiveWordsConfig.enableSegmentationTest;
-
-        const segmentationLabel = document.createElement('label');
-        segmentationLabel.htmlFor = 'segmentation-test-check';
-        segmentationLabel.textContent = '启用分词器结果输出';
-        segmentationLabel.style.marginLeft = '5px';
 
         // 添加容量配置
         const capacityLabel = document.createElement('label');
@@ -1750,6 +1754,7 @@
         exportFormatDesc.style.fontSize = '11px';
         exportFormatDesc.style.marginLeft = '10px';
 
+        // 添加检测配置
         configSection.appendChild(configLabel);
         configSection.appendChild(enableCheckbox);
         configSection.appendChild(enableLabel);
@@ -1764,6 +1769,7 @@
         configSection.appendChild(segmentationLabel);
         configSection.appendChild(document.createElement('br'));
 
+        // 添加弹幕配置
         configSection.appendChild(showLoadMsgCheckbox);
         configSection.appendChild(showLoadMsgLabel);
         configSection.appendChild(showLoadMsgDesc);
@@ -1773,6 +1779,7 @@
         configSection.appendChild(slimDanmuDesc);
         configSection.appendChild(document.createElement('br'));
 
+        // 添加选择框
         configSection.appendChild(showLogBoxLabel);
         configSection.appendChild(logBoxModeSelect);
         configSection.appendChild(document.createElement('br'));
