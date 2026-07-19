@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.4
+// @version      3.7.5
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -79,8 +79,10 @@
             enableSegmentationTest: false,
             // 是否默认显示弹幕记录板（派生字段：值 = logBoxDisplayMode === 'always'）
             showLogBoxByDefault: true,
-            // 弹幕记录板显示模式：'always' | 'never' | 'onFirstDanmu'
+            // 弹幕记录板显示模式：'always' | 'never' | 'onFirstDanmu' | 'onAbnormal'
             logBoxDisplayMode: 'always',
+            // 弹幕记录板/迷你按钮共享位置 {left, top}；null 表示用默认位置（右上角）
+            logBoxPos: null,
             // 弹幕记录板容量限制
             logBoxCapacity: 50,
             // 默认导出格式：'txt' 或 'csv'
@@ -111,6 +113,7 @@
         enableSegmentationTest: false,
         showLogBoxByDefault: true,
         logBoxDisplayMode: 'always',
+        logBoxPos: null,
         logBoxCapacity: 50,
         exportFormat: 'csv'
     };
@@ -223,6 +226,7 @@
         sensitiveWordsConfig.enableSegmentationTest = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
         sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
         sensitiveWordsConfig.logBoxDisplayMode = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
+        sensitiveWordsConfig.logBoxPos = sensitiveWordsConfig.defaultConfig.logBoxPos;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
@@ -256,6 +260,7 @@
                 enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
+                logBoxPos: sensitiveWordsConfig.logBoxPos,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
             };
@@ -713,20 +718,77 @@
         logBox.appendChild(contentArea);
         document.body.appendChild(logBox);
 
+        // ============================================================
+        // logBox(展开) 与 miniBtn(折叠) 共享位置状态：左上角对齐
+        // 持久化于 localStorage 的 danmu_sensitive_words.logBoxPos
+        // 坐标系：position:fixed 的 left/top，与 miniBtn 一致
+        // ============================================================
+        const LOG_BOX_DEFAULT_W = 320;
+        const LOG_BOX_DEFAULT_H = 250;
+        const MINI_SIZE = 44;
+
+        // 计算默认位置（右上角，与原视觉位置一致）
+        function computeDefaultPos() {
+            return {
+                left: Math.max(0, window.innerWidth - LOG_BOX_DEFAULT_W - 20),
+                top: 20
+            };
+        }
+
+        // 边界夹紧：保证元素完整可见在视口内
+        function clampPos(left, top, w, h) {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            return {
+                left: Math.max(0, Math.min(left, Math.max(0, vw - w))),
+                top: Math.max(0, Math.min(top, Math.max(0, vh - h)))
+            };
+        }
+
+        // 应用位置到 logBox：清掉 right 让 left/top 生效（logBox 已 position:fixed）
+        function applyPosToLogBox(left, top) {
+            logBox.style.right = '';
+            logBox.style.left = left + 'px';
+            logBox.style.top = top + 'px';
+            // 清掉历史可能残留的 transform（旧版本拖拽遗留）
+            logBox.style.transform = '';
+        }
+
+        // 应用位置到 mini
+        function applyPosToMini(left, top) {
+            miniBtnPlaceholder.style.left = left + 'px';
+            miniBtnPlaceholder.style.top = top + 'px';
+        }
+
+        // 持久化位置到 localStorage（增量写，避免影响其他字段）
+        function persistPos(left, top) {
+            sensitiveWordsConfig.logBoxPos = { left, top };
+            try {
+                const saved = localStorage.getItem('danmu_sensitive_words');
+                const cfg = saved ? JSON.parse(saved) : {};
+                cfg.logBoxPos = { left, top };
+                localStorage.setItem('danmu_sensitive_words', JSON.stringify(cfg));
+            } catch (e) {
+                // 持久化失败不影响功能
+            }
+        }
+
+        // 占位：miniBtn 定义在下方，先声明引用占位变量，待 miniBtn 创建后赋值
+        let miniBtnPlaceholder = null;
+
         // 迷你按钮（折叠态）：关闭记录板后显示的悬浮入口，点击恢复记录板
         // 折叠态与展开态互斥显示
         const miniBtn = document.createElement('div');
         miniBtn.id = 'danmu-log-mini';
         miniBtn.title = '点击展开弹幕记录板（可拖动）';
         miniBtn.textContent = '📝';
-        const miniSize = 44;
-        // 初始位置：右上角（与 logBox 默认位置一致）
-        const miniInitLeft = Math.max(0, window.innerWidth - miniSize - 20);
-        const miniInitTop = 20;
+        const miniSize = MINI_SIZE;
+        // 占位变量赋值：让上方 applyPosToMini 可用
+        miniBtnPlaceholder = miniBtn;
         miniBtn.style.cssText = `
             position: fixed;
-            left: ${miniInitLeft}px;
-            top: ${miniInitTop}px;
+            left: 0px;
+            top: 0px;
             width: ${miniSize}px;
             height: ${miniSize}px;
             display: none;
@@ -756,14 +818,20 @@
         };
         document.body.appendChild(miniBtn);
 
-        // 迷你按钮拖拽功能（独立于 logBox 拖拽，使用 left/top 定位）
+        // 初始化应用共享位置到 logBox 与 mini
+        const initSharedPos = sensitiveWordsConfig.logBoxPos || computeDefaultPos();
+        const clampedInit = clampPos(initSharedPos.left, initSharedPos.top, miniSize, miniSize);
+        applyPosToLogBox(clampedInit.left, clampedInit.top);
+        applyPosToMini(clampedInit.left, clampedInit.top);
+
+        // 迷你按钮拖拽功能：与 logBox 共享位置，拖拽结束持久化
         // 区分点击与拖拽：拖拽位移 > 5px 时不触发展开
         let miniIsDragging = false;
         let miniDragStarted = false;
         let miniStartMouseX = 0;
         let miniStartMouseY = 0;
-        let miniStartLeft = miniInitLeft;
-        let miniStartTop = miniInitTop;
+        let miniStartLeft = 0;
+        let miniStartTop = 0;
         let miniDragThrottle = null;
 
         miniBtn.addEventListener('mousedown', (e) => {
@@ -773,8 +841,8 @@
             miniDragStarted = false;
             miniStartMouseX = e.clientX;
             miniStartMouseY = e.clientY;
-            miniStartLeft = parseFloat(miniBtn.style.left) || miniInitLeft;
-            miniStartTop = parseFloat(miniBtn.style.top) || miniInitTop;
+            miniStartLeft = parseFloat(miniBtn.style.left) || 0;
+            miniStartTop = parseFloat(miniBtn.style.top) || 0;
             miniBtn.style.cursor = 'grabbing';
             miniBtn.style.willChange = 'left, top';
             e.preventDefault();
@@ -791,13 +859,11 @@
                     miniDragStarted = true;
                 }
                 if (miniDragStarted) {
-                    let newLeft = miniStartLeft + deltaX;
-                    let newTop = miniStartTop + deltaY;
-                    // 边界保护：保证按钮至少有部分可见在视口内
-                    newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - miniSize));
-                    newTop = Math.max(0, Math.min(newTop, window.innerHeight - miniSize));
-                    miniBtn.style.left = newLeft + 'px';
-                    miniBtn.style.top = newTop + 'px';
+                    // 用 mini 尺寸(44)夹紧，保证折叠态拖拽不超出视口
+                    const clamped = clampPos(miniStartLeft + deltaX, miniStartTop + deltaY, miniSize, miniSize);
+                    // 同步给 mini（实时反馈）+ logBox（隐藏态，下次显示时自动就位）
+                    applyPosToMini(clamped.left, clamped.top);
+                    applyPosToLogBox(clamped.left, clamped.top);
                 }
                 miniDragThrottle = null;
             });
@@ -811,6 +877,10 @@
             if (miniDragThrottle) {
                 cancelAnimationFrame(miniDragThrottle);
                 miniDragThrottle = null;
+            }
+            // 拖拽发生才持久化，避免无意义写
+            if (miniDragStarted) {
+                persistPos(parseFloat(miniBtn.style.left) || 0, parseFloat(miniBtn.style.top) || 0);
             }
             // 若本次未发生拖拽，交给 click 处理展开逻辑
         };
@@ -860,32 +930,29 @@
             logBox.removeAttribute('data-closed');
         };
 
-        // 添加拖拽功能 - 优化版本
+        // 添加拖拽功能 - 优化版本（与 mini 共享位置，使用 left/top 统一坐标系）
         let isDragging = false;
-        let currentX;
-        let currentY;
-        let initialX;
-        let initialY;
-        let xOffset = 0;
-        let yOffset = 0;
+        let dragStartMouseX = 0;
+        let dragStartMouseY = 0;
+        let dragStartLeft = 0;
+        let dragStartTop = 0;
+        let dragStartRect = null; // 记录起点 logBox 视觉尺寸（含 resize 后的实际尺寸）
         let dragThrottleTimer = null;
-        // 拖拽开始时记录 logBox 的视觉矩形，用于边界夹紧（resize:both 下尺寸会变，需动态读取）
-        let dragStartRect = null;
 
         titleBar.addEventListener('mousedown', dragStart);
         document.addEventListener('mousemove', drag);
         document.addEventListener('mouseup', dragEnd);
 
         function dragStart(e) {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-
             if (e.target === titleBar || titleBar.contains(e.target)) {
                 isDragging = true;
-                // 启用硬件加速
-                logBox.style.willChange = 'transform';
-                // 记录拖拽起点时 logBox 的当前位置与尺寸
-                // getBoundingClientRect 返回经 transform 后的视觉位置
+                logBox.style.willChange = 'left, top';
+                dragStartMouseX = e.clientX;
+                dragStartMouseY = e.clientY;
+                // 当前 left/top（parseFloat 解析 style）
+                dragStartLeft = parseFloat(logBox.style.left) || 0;
+                dragStartTop = parseFloat(logBox.style.top) || 0;
+                // 记录起点视觉尺寸，用于本周期边界夹紧（resize:both 下尺寸会变）
                 dragStartRect = logBox.getBoundingClientRect();
             }
         }
@@ -897,53 +964,34 @@
 
                 dragThrottleTimer = requestAnimationFrame(() => {
                     e.preventDefault();
-                    let deltaX = e.clientX - initialX;
-                    let deltaY = e.clientY - initialY;
+                    const deltaX = e.clientX - dragStartMouseX;
+                    const deltaY = e.clientY - dragStartMouseY;
 
-                    // 边界夹紧（与迷你按钮同款策略）：保证 logBox 完整可见在视口内
-                    // 基准使用 dragStartRect（视觉矩形），resize:both 下尺寸也以起点为准避免抖动
-                    if (dragStartRect) {
-                        const vw = window.innerWidth;
-                        const vh = window.innerHeight;
-                        const minLeft = 0;
-                        const maxLeft = Math.max(0, vw - dragStartRect.width);
-                        const minTop = 0;
-                        const maxTop = Math.max(0, vh - dragStartRect.height);
+                    // 用 logBox 起点尺寸做夹紧，保证大面板完整可见在视口内
+                    const w = dragStartRect ? dragStartRect.width : LOG_BOX_DEFAULT_W;
+                    const h = dragStartRect ? dragStartRect.height : LOG_BOX_DEFAULT_H;
+                    const clamped = clampPos(dragStartLeft + deltaX, dragStartTop + deltaY, w, h);
 
-                        const rawLeft = dragStartRect.left + deltaX;
-                        const rawTop = dragStartRect.top + deltaY;
-                        const clampedLeft = Math.max(minLeft, Math.min(rawLeft, maxLeft));
-                        const clampedTop = Math.max(minTop, Math.min(rawTop, maxTop));
+                    // 同步给 logBox 与 mini（自动同步位置：关闭后 mini 即在此处）
+                    applyPosToLogBox(clamped.left, clamped.top);
+                    applyPosToMini(clamped.left, clamped.top);
 
-                        // 反推夹紧后的 deltaX/deltaY
-                        deltaX = clampedLeft - dragStartRect.left;
-                        deltaY = clampedTop - dragStartRect.top;
-                    }
-
-                    currentX = deltaX;
-                    currentY = deltaY;
-                    xOffset = currentX;
-                    yOffset = currentY;
-
-                    // 使用transform3d启用硬件加速
-                    logBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
                     dragThrottleTimer = null;
                 });
             }
         }
 
         function dragEnd(e) {
-            initialX = currentX;
-            initialY = currentY;
             isDragging = false;
-            // 清理节流定时器
             if (dragThrottleTimer) {
                 cancelAnimationFrame(dragThrottleTimer);
                 dragThrottleTimer = null;
             }
-            // 禁用硬件加速以节省资源
             logBox.style.willChange = 'auto';
-            // 清理拖拽起点矩形引用
+            if (dragStartRect) {
+                // 持久化当前位置（一次拖拽仅一次写入）
+                persistPos(parseFloat(logBox.style.left) || 0, parseFloat(logBox.style.top) || 0);
+            }
             dragStartRect = null;
         }
 
@@ -1915,6 +1963,7 @@
                 enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
+                logBoxPos: sensitiveWordsConfig.logBoxPos,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
             };
@@ -2835,6 +2884,12 @@
                 }
                 // 同步派生字段，保持向后兼容
                 sensitiveWordsConfig.showLogBoxByDefault = (sensitiveWordsConfig.logBoxDisplayMode === 'always');
+                // 读取记录板/迷你按钮共享位置：必须是合法对象才采用，否则保持 null 走默认位置
+                if (config.logBoxPos && typeof config.logBoxPos.left === 'number' && typeof config.logBoxPos.top === 'number') {
+                    sensitiveWordsConfig.logBoxPos = { left: config.logBoxPos.left, top: config.logBoxPos.top };
+                } else {
+                    sensitiveWordsConfig.logBoxPos = null;
+                }
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
                 if (config.words && Array.isArray(config.words)) {
