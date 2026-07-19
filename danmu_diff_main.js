@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.9
+// @version      3.7.10
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -91,6 +91,8 @@
             exportFormat: 'csv',
             // 是否在脚本加载完毕时显示浮动提示弹幕
             showLoadMsg: true,
+            // 是否启用精简模式：开启后发送成功的弹幕不再显示浮字，仅失败时显示
+            slimDanmu: false,
             // 敏感词库最大容量限制
             maxWordsCapacity: 1000,
             // 默认敏感词列表
@@ -121,7 +123,8 @@
         logBoxCollapsed: false,
         logBoxCapacity: 50,
         exportFormat: 'csv',
-        showLoadMsg: true
+        showLoadMsg: true,
+        slimDanmu: false
     };
 
     // 控制台样式化输出工具
@@ -237,6 +240,7 @@
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
         sensitiveWordsConfig.showLoadMsg = sensitiveWordsConfig.defaultConfig.showLoadMsg;
+        sensitiveWordsConfig.slimDanmu = sensitiveWordsConfig.defaultConfig.slimDanmu;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
     }
 
@@ -272,7 +276,8 @@
                 logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat,
-                showLoadMsg: sensitiveWordsConfig.showLoadMsg
+                showLoadMsg: sensitiveWordsConfig.showLoadMsg,
+                slimDanmu: sensitiveWordsConfig.slimDanmu
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
         },
@@ -1120,9 +1125,10 @@
         capacityInput: null,
         exportFormatSelect: null,
         showLoadMsgCheckbox: null,
+        slimDanmuCheckbox: null,
 
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
@@ -1131,6 +1137,7 @@
             this.capacityInput = capacityInput;
             this.exportFormatSelect = exportFormatSelect;
             this.showLoadMsgCheckbox = showLoadMsgCheckbox;
+            this.slimDanmuCheckbox = slimDanmuCheckbox;
         },
 
         // 重置配置选项UI到默认状态
@@ -1143,6 +1150,7 @@
             if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
             if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
             if (this.showLoadMsgCheckbox) this.showLoadMsgCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLoadMsg;
+            if (this.slimDanmuCheckbox) this.slimDanmuCheckbox.checked = sensitiveWordsConfig.defaultConfig.slimDanmu;
         }
     };
 
@@ -1733,8 +1741,36 @@
         showLoadMsgLabel.textContent = '脚本加载完毕显示提示弹幕';
         showLoadMsgLabel.style.marginLeft = '5px';
 
+        const showLoadMsgDesc = document.createElement('span');
+        showLoadMsgDesc.textContent = '关闭后脚本加载成功弹幕不再显示';
+        showLoadMsgDesc.style.color = '#888';
+        showLoadMsgDesc.style.fontSize = '11px';
+        showLoadMsgDesc.style.marginLeft = '10px';
+
+        // 添加“精简弹幕”开关
+        const slimDanmuCheckbox = document.createElement('input');
+        slimDanmuCheckbox.type = 'checkbox';
+        slimDanmuCheckbox.id = 'slim-danmu-check';
+        slimDanmuCheckbox.checked = sensitiveWordsConfig.slimDanmu;
+
+        const slimDanmuLabel = document.createElement('label');
+        slimDanmuLabel.htmlFor = 'slim-danmu-check';
+        slimDanmuLabel.textContent = '精简弹幕';
+        slimDanmuLabel.style.marginLeft = '5px';
+
+        const slimDanmuDesc = document.createElement('span');
+        slimDanmuDesc.textContent = '发送成功不再显示弹幕，仅发送失败时显示';
+        slimDanmuDesc.style.color = '#888';
+        slimDanmuDesc.style.fontSize = '11px';
+        slimDanmuDesc.style.marginLeft = '10px';
+
         configSection.appendChild(showLoadMsgCheckbox);
         configSection.appendChild(showLoadMsgLabel);
+        configSection.appendChild(showLoadMsgDesc);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(slimDanmuCheckbox);
+        configSection.appendChild(slimDanmuLabel);
+        configSection.appendChild(slimDanmuDesc);
         configSection.appendChild(document.createElement('br'));
 
         configSection.appendChild(showLogBoxLabel);
@@ -1749,7 +1785,7 @@
         configSection.appendChild(exportFormatDesc);
 
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -2079,6 +2115,7 @@
             sensitiveWordsConfig.enableSegmentationTest = segmentationCheckbox.checked;
             sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
             sensitiveWordsConfig.showLoadMsg = showLoadMsgCheckbox.checked;
+            sensitiveWordsConfig.slimDanmu = slimDanmuCheckbox.checked;
 
             // 验证并设置容量值
             const capacityValue = parseInt(capacityInput.value);
@@ -2102,7 +2139,8 @@
                 logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat,
-                showLoadMsg: sensitiveWordsConfig.showLoadMsg
+                showLoadMsg: sensitiveWordsConfig.showLoadMsg,
+                slimDanmu: sensitiveWordsConfig.slimDanmu
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
 
@@ -3050,6 +3088,7 @@
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
                 sensitiveWordsConfig.showLoadMsg = config.showLoadMsg !== undefined ? config.showLoadMsg : sensitiveWordsConfig.defaultConfig.showLoadMsg;
+                sensitiveWordsConfig.slimDanmu = config.slimDanmu !== undefined ? config.slimDanmu : sensitiveWordsConfig.defaultConfig.slimDanmu;
                 if (config.words && Array.isArray(config.words)) {
                     sensitiveWordsConfig.words = config.words;
                 }
@@ -3265,7 +3304,7 @@
                 delete data.data;
             } else {
                 console.log("恭喜，您的弹幕正常显示！");
-                if (globalConfig.successSend === true) {
+                if (globalConfig.successSend === true && !sensitiveWordsConfig.slimDanmu) {
                     showFloatingMessage(globalConfig.successMsg, globalConfig.successColor);
                 }
             }
