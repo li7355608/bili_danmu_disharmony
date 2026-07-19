@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.7
+// @version      3.7.8
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -1143,7 +1143,9 @@
         // 检查是否已经存在管理界面
         let managerModal = document.getElementById('sensitive-word-manager');
         if (managerModal) {
-            managerModal.style.display = 'block';
+            // 注意：必须恢复为 'flex' 而非 'block'，否则丢失 justify-content/align-items 居中约束，
+            // panel 会从居中位置漂移到容器左上角（仅靠保留的 transform 偏移补偿，导致未拖动时无法居中）
+            managerModal.style.display = 'flex';
             // 每次打开时清空输入框
             const addInput = managerModal.querySelector('input[type="text"]');
             if (addInput) {
