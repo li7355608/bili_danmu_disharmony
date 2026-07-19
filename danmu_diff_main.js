@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.6
+// @version      3.7.7
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -83,6 +83,8 @@
             logBoxDisplayMode: 'always',
             // 弹幕记录板/迷你按钮共享位置 {left, top}；null 表示用默认位置（右上角）
             logBoxPos: null,
+            // 折叠态：true=mini按钮（折叠） / false=记录板（展开），持久化跨页面恢复
+            logBoxCollapsed: false,
             // 弹幕记录板容量限制
             logBoxCapacity: 50,
             // 默认导出格式：'txt' 或 'csv'
@@ -114,6 +116,7 @@
         showLogBoxByDefault: true,
         logBoxDisplayMode: 'always',
         logBoxPos: null,
+        logBoxCollapsed: false,
         logBoxCapacity: 50,
         exportFormat: 'csv'
     };
@@ -227,6 +230,7 @@
         sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
         sensitiveWordsConfig.logBoxDisplayMode = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
         sensitiveWordsConfig.logBoxPos = sensitiveWordsConfig.defaultConfig.logBoxPos;
+        sensitiveWordsConfig.logBoxCollapsed = sensitiveWordsConfig.defaultConfig.logBoxCollapsed;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
@@ -261,6 +265,7 @@
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
                 logBoxPos: sensitiveWordsConfig.logBoxPos,
+                logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
             };
@@ -839,6 +844,19 @@
             }
         }
 
+        // 持久化折叠态到 localStorage（增量写）
+        function persistCollapsed(collapsed) {
+            sensitiveWordsConfig.logBoxCollapsed = collapsed;
+            try {
+                const saved = localStorage.getItem('danmu_sensitive_words');
+                const cfg = saved ? JSON.parse(saved) : {};
+                cfg.logBoxCollapsed = collapsed;
+                localStorage.setItem('danmu_sensitive_words', JSON.stringify(cfg));
+            } catch (e) {
+                // 持久化失败不影响功能
+            }
+        }
+
         // 占位：miniBtn 定义在下方，先声明引用占位变量，待 miniBtn 创建后赋值
         let miniBtnPlaceholder = null;
 
@@ -986,6 +1004,8 @@
             miniBtn.style.display = 'flex';
             // 标记为已关闭，保留 logDanmuToBox 复活逻辑的语义
             logBox.setAttribute('data-closed', 'true');
+            // 持久化折叠态，下次加载默认显示 mini
+            persistCollapsed(true);
         };
 
         // 迷你按钮点击恢复：隐藏迷你，显示大面板（仅未发生拖拽时生效）
@@ -998,6 +1018,8 @@
             miniBtn.style.display = 'none';
             logBox.style.display = 'block';
             logBox.removeAttribute('data-closed');
+            // 持久化展开态，下次加载默认显示 logBox
+            persistCollapsed(false);
         };
 
         // 添加拖拽功能 - 优化版本（与 mini 共享位置，使用 left/top 统一坐标系）
@@ -1070,6 +1092,14 @@
                 persistPos(parseFloat(logBox.style.left) || 0, parseFloat(logBox.style.top) || 0);
             }
             dragStartRect = null;
+        }
+
+        // 按 logBoxCollapsed 决定初始展示形态：折叠态则显示 mini、隐藏 logBox
+        // 命中持久化场景：用户上次关闭时折叠，刷新页面应保持 mini 形态
+        if (sensitiveWordsConfig.logBoxCollapsed) {
+            logBox.style.display = 'none';
+            logBox.setAttribute('data-closed', 'true');
+            miniBtn.style.display = 'flex';
         }
 
         return logBox;
@@ -2041,6 +2071,7 @@
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
                 logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
                 logBoxPos: sensitiveWordsConfig.logBoxPos,
+                logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
             };
@@ -2866,6 +2897,16 @@
             }
             logBox.style.display = 'block';
             logBox.removeAttribute('data-closed');
+            // 复活即"自动展开"，同步持久化展开态
+            if (sensitiveWordsConfig.logBoxCollapsed) {
+                try {
+                    const saved = localStorage.getItem('danmu_sensitive_words');
+                    const cfg = saved ? JSON.parse(saved) : {};
+                    cfg.logBoxCollapsed = false;
+                    localStorage.setItem('danmu_sensitive_words', JSON.stringify(cfg));
+                } catch (e) {}
+                sensitiveWordsConfig.logBoxCollapsed = false;
+            }
         }
 
         const contentArea = domCache.getContentArea();
@@ -2975,6 +3016,8 @@
                 } else {
                     sensitiveWordsConfig.logBoxPos = null;
                 }
+                // 读取折叠态：布尔值才采用，否则保持默认 false（展开）
+                sensitiveWordsConfig.logBoxCollapsed = (typeof config.logBoxCollapsed === 'boolean') ? config.logBoxCollapsed : sensitiveWordsConfig.defaultConfig.logBoxCollapsed;
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
                 if (config.words && Array.isArray(config.words)) {
