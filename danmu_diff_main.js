@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.2
+// @version      3.7.3
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -77,8 +77,10 @@
             fuzzyMatch: true,
             // 是否启用分词器测试
             enableSegmentationTest: false,
-            // 是否默认显示弹幕记录板
+            // 是否默认显示弹幕记录板（派生字段：值 = logBoxDisplayMode === 'always'）
             showLogBoxByDefault: true,
+            // 弹幕记录板显示模式：'always' | 'never' | 'onFirstDanmu'
+            logBoxDisplayMode: 'always',
             // 弹幕记录板容量限制
             logBoxCapacity: 50,
             // 默认导出格式：'txt' 或 'csv'
@@ -108,6 +110,7 @@
         fuzzyMatch: true,
         enableSegmentationTest: false,
         showLogBoxByDefault: true,
+        logBoxDisplayMode: 'always',
         logBoxCapacity: 50,
         exportFormat: 'csv'
     };
@@ -219,6 +222,7 @@
         sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
         sensitiveWordsConfig.enableSegmentationTest = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
         sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+        sensitiveWordsConfig.logBoxDisplayMode = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
@@ -251,6 +255,7 @@
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
                 enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
+                logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
             };
@@ -806,17 +811,17 @@
         enableCheckbox: null,
         caseCheckbox: null,
         fuzzyCheckbox: null,
-        showLogBoxCheckbox: null,
+        logBoxModeSelect: null,
         segmentationCheckbox: null,
         capacityInput: null,
         exportFormatSelect: null,
 
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
-            this.showLogBoxCheckbox = showLogBoxCheckbox;
+            this.logBoxModeSelect = logBoxModeSelect;
             this.segmentationCheckbox = segmentationCheckbox;
             this.capacityInput = capacityInput;
             this.exportFormatSelect = exportFormatSelect;
@@ -827,7 +832,7 @@
             if (this.enableCheckbox) this.enableCheckbox.checked = sensitiveWordsConfig.defaultConfig.enabled;
             if (this.caseCheckbox) this.caseCheckbox.checked = sensitiveWordsConfig.defaultConfig.caseSensitive;
             if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
-            if (this.showLogBoxCheckbox) this.showLogBoxCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+            if (this.logBoxModeSelect) this.logBoxModeSelect.value = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
             if (this.segmentationCheckbox) this.segmentationCheckbox.checked = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
             if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
             if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
@@ -1207,15 +1212,68 @@
         fuzzyLabel.textContent = '模糊匹配';
         fuzzyLabel.style.marginLeft = '5px';
 
-        const showLogBoxCheckbox = document.createElement('input');
-        showLogBoxCheckbox.type = 'checkbox';
-        showLogBoxCheckbox.id = 'show-logbox-check';
-        showLogBoxCheckbox.checked = sensitiveWordsConfig.showLogBoxByDefault;
-
+        // 弹幕记录板显示模式（四态下拉框）
+        const logBoxModeConfigs = [
+            { value: 'always', label: '永远展示' },
+            { value: 'never', label: '永远关闭' },
+            { value: 'onFirstDanmu', label: '首次发弹幕后显示' },
+            { value: 'onAbnormal', label: '弹幕异常时显示（被主播/系统删除）' }
+        ];
         const showLogBoxLabel = document.createElement('label');
-        showLogBoxLabel.htmlFor = 'show-logbox-check';
-        showLogBoxLabel.textContent = '页面加载立即显示记录板';
-        showLogBoxLabel.style.marginLeft = '5px';
+        showLogBoxLabel.htmlFor = 'logbox-mode-select';
+        showLogBoxLabel.textContent = '弹幕记录板显示模式:';
+        showLogBoxLabel.style.display = 'block';
+        showLogBoxLabel.style.marginTop = '10px';
+        showLogBoxLabel.style.marginBottom = '5px';
+
+        const logBoxModeSelect = document.createElement('select');
+        logBoxModeSelect.id = 'logbox-mode-select';
+        logBoxModeSelect.value = sensitiveWordsConfig.logBoxDisplayMode;
+        logBoxModeSelect.style.cssText = `
+            width: auto;
+            min-width: 180px;
+            padding: 8px 12px;
+            border: 2px solid rgba(0, 161, 214, 0.5);
+            border-radius: 6px;
+            background: linear-gradient(135deg, #333, #2a2a2a);
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            margin-bottom: 5px;
+        `;
+        logBoxModeConfigs.forEach(cfg => {
+            const opt = document.createElement('option');
+            opt.value = cfg.value;
+            opt.textContent = cfg.label;
+            if (sensitiveWordsConfig.logBoxDisplayMode === cfg.value) {
+                opt.selected = true;
+            }
+            logBoxModeSelect.appendChild(opt);
+        });
+        logBoxModeSelect.onfocus = () => {
+            logBoxModeSelect.style.borderColor = '#00a1d6';
+            logBoxModeSelect.style.boxShadow = '0 0 0 3px rgba(0, 161, 214, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+        logBoxModeSelect.onblur = () => {
+            logBoxModeSelect.style.borderColor = 'rgba(0, 161, 214, 0.5)';
+            logBoxModeSelect.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+
+        // 下拉选项样式：解决 Windows/某些主题下 native option 看不清的问题（与 export-format-select 同套方案）
+        const logBoxModeSelectStyle = document.createElement('style');
+        logBoxModeSelectStyle.textContent = `
+            #logbox-mode-select {
+                color: white !important;
+            }
+            #logbox-mode-select option {
+                background: #2c2c2c !important;
+                color: white !important;
+                padding: 8px 12px;
+            }
+        `;
+        document.head.appendChild(logBoxModeSelectStyle);
 
         const segmentationCheckbox = document.createElement('input');
         segmentationCheckbox.type = 'checkbox';
@@ -1350,11 +1408,11 @@
         configSection.appendChild(fuzzyCheckbox);
         configSection.appendChild(fuzzyLabel);
         configSection.appendChild(document.createElement('br'));
-        configSection.appendChild(showLogBoxCheckbox);
-        configSection.appendChild(showLogBoxLabel);
-        configSection.appendChild(document.createElement('br'));
         configSection.appendChild(segmentationCheckbox);
         configSection.appendChild(segmentationLabel);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(showLogBoxLabel);
+        configSection.appendChild(logBoxModeSelect);
         configSection.appendChild(document.createElement('br'));
         configSection.appendChild(capacityLabel);
         configSection.appendChild(capacityInput);
@@ -1365,7 +1423,7 @@
         configSection.appendChild(exportFormatDesc);
 
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -1688,7 +1746,10 @@
             sensitiveWordsConfig.enabled = enableCheckbox.checked;
             sensitiveWordsConfig.caseSensitive = caseCheckbox.checked;
             sensitiveWordsConfig.fuzzyMatch = fuzzyCheckbox.checked;
-            sensitiveWordsConfig.showLogBoxByDefault = showLogBoxCheckbox.checked;
+            // 读取三态下拉框选中值
+            sensitiveWordsConfig.logBoxDisplayMode = logBoxModeSelect.value || 'always';
+            // 同步派生字段，保持向后兼容
+            sensitiveWordsConfig.showLogBoxByDefault = (sensitiveWordsConfig.logBoxDisplayMode === 'always');
             sensitiveWordsConfig.enableSegmentationTest = segmentationCheckbox.checked;
             sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
 
@@ -1709,15 +1770,17 @@
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
                 enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
+                logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
                 exportFormat: sensitiveWordsConfig.exportFormat
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
 
-            // 如果弹幕记录板显示配置发生变化，需要重新创建或隐藏弹幕记录板
+            // 根据显示模式同步记录板可见性
             const logBox = document.getElementById('danmu-log-box');
-            if (sensitiveWordsConfig.showLogBoxByDefault) {
-                // 如果启用默认显示，确保弹幕记录板存在并显示，只有在真实直播间页面（有 live-player）才创建
+            const mode = sensitiveWordsConfig.logBoxDisplayMode;
+            if (mode === 'always') {
+                // 永远展示：不存在则创建，存在则显示并复活
                 if (!logBox) {
                     const livePlayerDiv = document.getElementById('live-player');
                     if (livePlayerDiv) {
@@ -1730,7 +1793,7 @@
                     logBox.removeAttribute('data-closed');
                 }
             } else {
-                // 如果禁用默认显示，隐藏弹幕记录板
+                // 'never' / 'onFirstDanmu' / 'onAbnormal'：隐藏记录板（保留 DOM 不销毁）
                 if (logBox) {
                     logBox.style.display = 'none';
                     logBox.setAttribute('data-closed', 'true');
@@ -2494,6 +2557,24 @@
         // 检查全局开关
         if (!globalConfig.advancedFeaturesEnabled) return;
 
+        // 模式判定：'never' 不记录任何数据，直接 return，避免触发 domCache.getLogBox() 的无条件创建
+        const mode = sensitiveWordsConfig.logBoxDisplayMode;
+        if (mode === 'never') return;
+
+        // 模式 'onAbnormal'：仅异常弹幕（被主播/系统删除）触发记录板创建与显示
+        // - 异常弹幕（system/user）：与 onFirstDanmu 同行为，触发创建+复活
+        // - 正常弹幕（normal）：若记录板尚未创建则直接 return，已创建则正常记录
+        if (mode === 'onAbnormal') {
+            const isAbnormal = (type === 'system' || type === 'user');
+            const existingBox = document.getElementById('danmu-log-box');
+            if (!isAbnormal && !existingBox) {
+                return;
+            }
+        }
+
+        // 'always' / 'onFirstDanmu' / 'onAbnormal 触发条件成立时' 走正常逻辑：
+        // - domCache.getLogBox() 在首次调用时创建记录板（满足 'onFirstDanmu' 首次发弹幕 / 'onAbnormal' 首次异常 触发）
+        // - 下面的复活逻辑对 'always' 已关闭场景生效，对首次创建后无 data-closed 自然跳过
         const logBox = domCache.getLogBox();
 
         // 如果记录板不存在，直接返回（可能页面未加载完成）
@@ -2598,7 +2679,16 @@
                 sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : sensitiveWordsConfig.defaultConfig.caseSensitive;
                 sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : sensitiveWordsConfig.defaultConfig.fuzzyMatch;
                 sensitiveWordsConfig.enableSegmentationTest = config.enableSegmentationTest !== undefined ? config.enableSegmentationTest : sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
-                sensitiveWordsConfig.showLogBoxByDefault = config.showLogBoxByDefault !== undefined ? config.showLogBoxByDefault : sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+                // 三态枚举模式迁移：优先读新字段，否则按旧布尔字段映射
+                if (config.logBoxDisplayMode !== undefined) {
+                    sensitiveWordsConfig.logBoxDisplayMode = config.logBoxDisplayMode;
+                } else if (config.showLogBoxByDefault !== undefined) {
+                    sensitiveWordsConfig.logBoxDisplayMode = config.showLogBoxByDefault ? 'always' : 'onFirstDanmu';
+                } else {
+                    sensitiveWordsConfig.logBoxDisplayMode = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
+                }
+                // 同步派生字段，保持向后兼容
+                sensitiveWordsConfig.showLogBoxByDefault = (sensitiveWordsConfig.logBoxDisplayMode === 'always');
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
                 if (config.words && Array.isArray(config.words)) {
@@ -2618,8 +2708,8 @@
     // 初始化配置
     initSensitiveWordsConfig();
 
-    // 根据全局开关和配置决定是否默认显示弹幕记录板
-    if (globalConfig.advancedFeaturesEnabled && sensitiveWordsConfig.showLogBoxByDefault) {
+    // 根据全局开关和配置决定是否默认显示弹幕记录板（仅 'always' 模式在页面加载时创建）
+    if (globalConfig.advancedFeaturesEnabled && sensitiveWordsConfig.logBoxDisplayMode === 'always') {
         // 延迟创建弹幕记录板，确保页面加载完成
         // 使用 DOMContentLoaded 或延迟执行，确保页面元素已加载
         const initLogBox = () => {
