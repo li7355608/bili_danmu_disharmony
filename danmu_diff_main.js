@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [哔哩哔哩直播]---弹幕反诈与防河蟹
-// @version      3.7.1
+// @version      3.7.13
 // @description  本脚本会提示你在直播间发送的弹幕是否被秒删，被什么秒删，有助于用户规避河蟹词，避免看似发了弹幕结果主播根本看不到，不被发送成功的谎言所欺骗！
 // @author       Asuna
 // @icon         https://www.bilibili.com/favicon.ico
@@ -25,10 +25,11 @@
 // @match        *://live.bilibili.com/blanc/9*
 // @run-at       document-start
 // @grant        unsafeWindow
+// @grant        GM_registerMenuCommand
 // @require      https://cdn.jsdelivr.net/npm/segmentit@2.0.3/dist/umd/segmentit.min.js
-// @namespace https://greasyfork.org/users/1390050
-// @downloadURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.user.js
-// @updateURL https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.meta.js
+// @namespace    https://greasyfork.org/users/1390050
+// @downloadURL  https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.user.js
+// @updateURL    https://update.greasyfork.org/scripts/516801/%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9%E7%9B%B4%E6%92%AD%E5%BC%B9%E5%B9%95%E5%8F%8D%E8%AF%88%E4%BF%AE%E6%94%B9%E7%89%88.meta.js
 // ==/UserScript==
 
 (function() {
@@ -77,12 +78,24 @@
             fuzzyMatch: true,
             // 是否启用分词器测试
             enableSegmentationTest: false,
-            // 是否默认显示弹幕记录板
+            // 是否默认显示弹幕记录板（派生字段：值 = logBoxDisplayMode === 'always'）
             showLogBoxByDefault: true,
+            // 弹幕记录板显示模式：'always' | 'never' | 'onFirstDanmu' | 'onAbnormal'
+            logBoxDisplayMode: 'always',
+            // 弹幕记录板/迷你按钮共享位置 {left, top}；null 表示用默认位置（右上角）
+            logBoxPos: null,
+            // 折叠态：true=mini按钮（折叠） / false=记录板（展开），持久化跨页面恢复
+            logBoxCollapsed: false,
             // 弹幕记录板容量限制
             logBoxCapacity: 50,
             // 默认导出格式：'txt' 或 'csv'
             exportFormat: 'csv',
+            // 是否在脚本加载完毕时显示浮动提示弹幕
+            showLoadMsg: true,
+            // 是否启用精简模式：开启后发送成功的弹幕不再显示浮字，仅失败时显示
+            slimDanmu: false,
+            // 是否允许弹幕重叠：true=连发弹幕飘屏叠加（默认）；false=同屏仅一条飘屏，新弹幕替换旧弹幕
+            allowDanmuOverlap: true,
             // 敏感词库最大容量限制
             maxWordsCapacity: 1000,
             // 默认敏感词列表
@@ -108,8 +121,14 @@
         fuzzyMatch: true,
         enableSegmentationTest: false,
         showLogBoxByDefault: true,
+        logBoxDisplayMode: 'always',
+        logBoxPos: null,
+        logBoxCollapsed: false,
         logBoxCapacity: 50,
-        exportFormat: 'csv'
+        exportFormat: 'csv',
+        showLoadMsg: true,
+        slimDanmu: false,
+        allowDanmuOverlap: true
     };
 
     // 控制台样式化输出工具
@@ -219,8 +238,14 @@
         sensitiveWordsConfig.fuzzyMatch = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
         sensitiveWordsConfig.enableSegmentationTest = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
         sensitiveWordsConfig.showLogBoxByDefault = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+        sensitiveWordsConfig.logBoxDisplayMode = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
+        sensitiveWordsConfig.logBoxPos = sensitiveWordsConfig.defaultConfig.logBoxPos;
+        sensitiveWordsConfig.logBoxCollapsed = sensitiveWordsConfig.defaultConfig.logBoxCollapsed;
         sensitiveWordsConfig.logBoxCapacity = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
         sensitiveWordsConfig.exportFormat = sensitiveWordsConfig.defaultConfig.exportFormat;
+        sensitiveWordsConfig.showLoadMsg = sensitiveWordsConfig.defaultConfig.showLoadMsg;
+        sensitiveWordsConfig.slimDanmu = sensitiveWordsConfig.defaultConfig.slimDanmu;
+        sensitiveWordsConfig.allowDanmuOverlap = sensitiveWordsConfig.defaultConfig.allowDanmuOverlap;
         sensitiveWordsConfig.words = [...sensitiveWordsConfig.defaultConfig.words];
     }
 
@@ -251,8 +276,14 @@
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
                 enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
+                logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
+                logBoxPos: sensitiveWordsConfig.logBoxPos,
+                logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
-                exportFormat: sensitiveWordsConfig.exportFormat
+                exportFormat: sensitiveWordsConfig.exportFormat,
+                showLoadMsg: sensitiveWordsConfig.showLoadMsg,
+                slimDanmu: sensitiveWordsConfig.slimDanmu,
+                allowDanmuOverlap: sensitiveWordsConfig.allowDanmuOverlap
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
         },
@@ -462,6 +493,12 @@
             }
         }
 
+        // logBox 尺寸约束（resize: both 下夹紧用户拖拽范围）
+        const LOG_BOX_MIN_W = 300;
+        const LOG_BOX_MIN_H = 200;
+        const LOG_BOX_MAX_W_VW = 25;   // 单位 vw
+        const LOG_BOX_MAX_H_VH = 50;   // 单位 vh
+
         const logBox = document.createElement('div');
         logBox.id = 'danmu-log-box';
         logBox.style.cssText = `
@@ -480,6 +517,10 @@
             font-family: 'Microsoft YaHei', sans-serif;
             overflow: hidden;
             resize: both;
+            min-width: ${LOG_BOX_MIN_W}px;
+            min-height: ${LOG_BOX_MIN_H}px;
+            max-width: ${LOG_BOX_MAX_W_VW}vw;
+            max-height: ${LOG_BOX_MAX_H_VH}vh;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
             user-select: none;
             -webkit-user-select: none;
@@ -708,6 +749,255 @@
         logBox.appendChild(contentArea);
         document.body.appendChild(logBox);
 
+        // ============================================================
+        // logBox(展开) 与 miniBtn(折叠) 共享位置状态：按 mini 在视口的方位选 logBox 对齐角
+        // 持久化于 localStorage 的 danmu_sensitive_words.logBoxPos（仅存 mini 位置）
+        // 坐标系：position:fixed 的 left/top（mini），logBox 按锚角使用 left/right + top/bottom
+        // ============================================================
+        const LOG_BOX_DEFAULT_W = 320;
+        const LOG_BOX_DEFAULT_H = 250;
+        const MINI_SIZE = 44;
+
+        // 计算默认位置（右上角，与原视觉位置一致）：始终用右上角锚，保证默认视觉无回归
+        function computeDefaultPos() {
+            return {
+                left: Math.max(0, window.innerWidth - MINI_SIZE - 20),
+                top: 20,
+                corner: 'tr'
+            };
+        }
+
+        // 边界夹紧：保证元素完整可见在视口内
+        function clampPos(left, top, w, h) {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            return {
+                left: Math.max(0, Math.min(left, Math.max(0, vw - w))),
+                top: Math.max(0, Math.min(top, Math.max(0, vh - h)))
+            };
+        }
+
+        // 计算 logBox 相对 mini 的对齐锚角
+        // 9 宫格判定：以 mini 的中心点在视口的方位划分
+        //   左：center.x < vw * 1/3
+        //   右：center.x > vw * 2/3
+        //   上：center.y < vh * 1/3
+        //   下：center.y > vh * 2/3
+        // 返回 corner 双字母含义：
+        //   第一位 t(op)/c(enter)/b(ottom) —— logBox 顶边相对 mini 顶边的关系（c 视为 t，附带夹紧）
+        //   第二位 l(eft)/c(enter)/r(ight) —— logBox 左边相对 mini 左边的关系（c 视为 l，附带夹紧）
+        // 实际对齐角仅 4 种：tl / tr / bl / br（中心类退化为附带夹紧的角对齐）
+        function computeAnchor(miniLeft, miniTop) {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const cx = miniLeft + MINI_SIZE / 2;
+            const cy = miniTop + MINI_SIZE / 2;
+
+            const isRight = (cx > vw * 2 / 3);   // mini 偏右 → logBox 用右上/右下角对齐
+            const isLeft = (cx < vw / 3);    // mini 偏左 → logBox 用左上/左下角对齐
+            const isBottom = (cy > vh * 2 / 3);  // mini 偏下 → logBox 用左下/右下角对齐
+            const isTop = (cy < vh / 3);     // mini 偏上 → logBox 用左上/右上角对齐
+
+            const v = isBottom ? 'b' : 't';   // 中部视为顶部对齐 + 夹紧
+            const h = isRight ? 'r' : 'l';    // 中部视为左侧对齐 + 夹紧
+            return v + h;                     // tl / tr / bl / br
+        }
+
+        // 应用位置到 logBox：按 mini 位置计算锚角，把 logBox 对应角贴到 mini 同边
+        // 同时保证 logBox 完整可见（夹紧）
+        function applyPosToLogBox(miniLeft, miniTop) {
+            const logBoxRect = logBox.getBoundingClientRect();
+            const w = logBoxRect.width || LOG_BOX_DEFAULT_W;
+            const h = logBoxRect.height || LOG_BOX_DEFAULT_H;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const anchor = computeAnchor(miniLeft, miniTop);
+
+            // 重置所有定位属性，避免上次遗留的 right/bottom 影响本次
+            logBox.style.transform = '';
+
+            let left, top;
+            switch (anchor) {
+                case 'tr': // 右上角对齐：logBox 右边 = mini 右边
+                    left = miniLeft + MINI_SIZE - w;
+                    top = miniTop;
+                    break;
+                case 'bl': // 左下角对齐：logBox 下边 = mini 下边
+                    left = miniLeft;
+                    top = miniTop + MINI_SIZE - h;
+                    break;
+                case 'br': // 右下角对齐：logBox 右下 = mini 右下
+                    left = miniLeft + MINI_SIZE - w;
+                    top = miniTop + MINI_SIZE - h;
+                    break;
+                case 'tl': // 左上角对齐（默认）
+                default:
+                    left = miniLeft;
+                    top = miniTop;
+                    break;
+            }
+
+            // 夹紧：保证 logBox 完整可见在视口内
+            left = Math.max(0, Math.min(left, Math.max(0, vw - w)));
+            top = Math.max(0, Math.min(top, Math.max(0, vh - h)));
+
+            // 用 left/top 写入（尝试过 right/bottom 切换会导致 resize 时坐标系混乱，统一用 left/top 更稳）
+            logBox.style.left = left + 'px';
+            logBox.style.top = top + 'px';
+            logBox.style.right = '';
+            logBox.style.bottom = '';
+        }
+
+        // 暴露给外部作用域（logDanmuToBox 复活分支需调用，避免重复实现锚角算法）
+        logBox._applyPosByMini = applyPosToLogBox;
+
+        // 应用位置到 mini
+        function applyPosToMini(left, top) {
+            miniBtnPlaceholder.style.left = left + 'px';
+            miniBtnPlaceholder.style.top = top + 'px';
+        }
+
+        // 持久化位置到 localStorage（增量写，避免影响其他字段）
+        function persistPos(left, top) {
+            sensitiveWordsConfig.logBoxPos = { left, top };
+            try {
+                const saved = localStorage.getItem('danmu_sensitive_words');
+                const cfg = saved ? JSON.parse(saved) : {};
+                cfg.logBoxPos = { left, top };
+                localStorage.setItem('danmu_sensitive_words', JSON.stringify(cfg));
+            } catch (e) {
+                // 持久化失败不影响功能
+            }
+        }
+
+        // 持久化折叠态到 localStorage（增量写）
+        function persistCollapsed(collapsed) {
+            sensitiveWordsConfig.logBoxCollapsed = collapsed;
+            try {
+                const saved = localStorage.getItem('danmu_sensitive_words');
+                const cfg = saved ? JSON.parse(saved) : {};
+                cfg.logBoxCollapsed = collapsed;
+                localStorage.setItem('danmu_sensitive_words', JSON.stringify(cfg));
+            } catch (e) {
+                // 持久化失败不影响功能
+            }
+        }
+
+        // 占位：miniBtn 定义在下方，先声明引用占位变量，待 miniBtn 创建后赋值
+        let miniBtnPlaceholder = null;
+
+        // 迷你按钮（折叠态）：关闭记录板后显示的悬浮入口，点击恢复记录板
+        // 折叠态与展开态互斥显示
+        const miniBtn = document.createElement('div');
+        miniBtn.id = 'danmu-log-mini';
+        miniBtn.title = '点击展开弹幕记录板（可拖动）';
+        miniBtn.textContent = '📝';
+        const miniSize = MINI_SIZE;
+        // 占位变量赋值：让上方 applyPosToMini 可用
+        miniBtnPlaceholder = miniBtn;
+        miniBtn.style.cssText = `
+            position: fixed;
+            left: 0px;
+            top: 0px;
+            width: ${miniSize}px;
+            height: ${miniSize}px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #00a1d6, #0077b6);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: grab;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0, 161, 214, 0.5);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        `;
+        miniBtn.onmouseenter = () => {
+            miniBtn.style.transform = 'scale(1.08)';
+            miniBtn.style.boxShadow = '0 6px 16px rgba(0, 161, 214, 0.7)';
+        };
+        miniBtn.onmouseleave = () => {
+            miniBtn.style.transform = 'scale(1)';
+            miniBtn.style.boxShadow = '0 4px 12px rgba(0, 161, 214, 0.5)';
+        };
+        document.body.appendChild(miniBtn);
+
+        // 初始化应用共享位置到 logBox 与 mini
+        const initSharedPos = sensitiveWordsConfig.logBoxPos || computeDefaultPos();
+        const clampedInit = clampPos(initSharedPos.left, initSharedPos.top, miniSize, miniSize);
+        applyPosToLogBox(clampedInit.left, clampedInit.top);
+        applyPosToMini(clampedInit.left, clampedInit.top);
+
+        // 迷你按钮拖拽功能：与 logBox 共享位置，拖拽结束持久化
+        // 区分点击与拖拽：拖拽位移 > 5px 时不触发展开
+        let miniIsDragging = false;
+        let miniDragStarted = false;
+        let miniStartMouseX = 0;
+        let miniStartMouseY = 0;
+        let miniStartLeft = 0;
+        let miniStartTop = 0;
+        let miniDragThrottle = null;
+
+        miniBtn.addEventListener('mousedown', (e) => {
+            // 仅响应主键（左键）
+            if (e.button !== 0) return;
+            miniIsDragging = true;
+            miniDragStarted = false;
+            miniStartMouseX = e.clientX;
+            miniStartMouseY = e.clientY;
+            miniStartLeft = parseFloat(miniBtn.style.left) || 0;
+            miniStartTop = parseFloat(miniBtn.style.top) || 0;
+            miniBtn.style.cursor = 'grabbing';
+            miniBtn.style.willChange = 'left, top';
+            e.preventDefault();
+        });
+
+        const miniDragMove = (e) => {
+            if (!miniIsDragging) return;
+            if (miniDragThrottle) return;
+            miniDragThrottle = requestAnimationFrame(() => {
+                const deltaX = e.clientX - miniStartMouseX;
+                const deltaY = e.clientY - miniStartMouseY;
+                // 位移超过阈值才视为拖拽，避免点击误判
+                if (!miniDragStarted && Math.abs(deltaX) + Math.abs(deltaY) > 5) {
+                    miniDragStarted = true;
+                }
+                if (miniDragStarted) {
+                    // 用 mini 尺寸(44)夹紧，保证折叠态拖拽不超出视口
+                    const clamped = clampPos(miniStartLeft + deltaX, miniStartTop + deltaY, miniSize, miniSize);
+                    // 同步给 mini（实时反馈）+ logBox（隐藏态，下次显示时自动就位）
+                    applyPosToMini(clamped.left, clamped.top);
+                    applyPosToLogBox(clamped.left, clamped.top);
+                }
+                miniDragThrottle = null;
+            });
+        };
+
+        const miniDragEnd = (e) => {
+            if (!miniIsDragging) return;
+            miniIsDragging = false;
+            miniBtn.style.cursor = 'grab';
+            miniBtn.style.willChange = 'auto';
+            if (miniDragThrottle) {
+                cancelAnimationFrame(miniDragThrottle);
+                miniDragThrottle = null;
+            }
+            // 拖拽发生才持久化，避免无意义写
+            if (miniDragStarted) {
+                persistPos(parseFloat(miniBtn.style.left) || 0, parseFloat(miniBtn.style.top) || 0);
+            }
+            // 若本次未发生拖拽，交给 click 处理展开逻辑
+        };
+
+        document.addEventListener('mousemove', miniDragMove);
+        document.addEventListener('mouseup', miniDragEnd);
+
         // 更新保存按钮文本显示当前导出格式
         updateSaveButtonText();
 
@@ -735,19 +1025,36 @@
         };
 
         closeBtn.onclick = () => {
+            // 折叠为迷你按钮：隐藏大面板，显示迷你入口
             logBox.style.display = 'none';
-            // 添加重新打开功能
+            miniBtn.style.display = 'flex';
+            // 标记为已关闭，保留 logDanmuToBox 复活逻辑的语义
             logBox.setAttribute('data-closed', 'true');
+            // 持久化折叠态，下次加载默认显示 mini
+            persistCollapsed(true);
         };
 
-        // 添加拖拽功能 - 优化版本
+        // 迷你按钮点击恢复：隐藏迷你，显示大面板（仅未发生拖拽时生效）
+        miniBtn.onclick = () => {
+            if (miniDragStarted) return;
+            // 展开前重算 logBox 锚角位置（应对 mini 被拖到边缘/窗口尺寸变化）
+            const miniLeft = parseFloat(miniBtn.style.left) || 0;
+            const miniTop = parseFloat(miniBtn.style.top) || 0;
+            applyPosToLogBox(miniLeft, miniTop);
+            miniBtn.style.display = 'none';
+            logBox.style.display = 'block';
+            logBox.removeAttribute('data-closed');
+            // 持久化展开态，下次加载默认显示 logBox
+            persistCollapsed(false);
+        };
+
+        // 添加拖拽功能 - 优化版本（与 mini 共享位置，使用 left/top 统一坐标系）
         let isDragging = false;
-        let currentX;
-        let currentY;
-        let initialX;
-        let initialY;
-        let xOffset = 0;
-        let yOffset = 0;
+        let dragStartMouseX = 0;
+        let dragStartMouseY = 0;
+        let dragStartLeft = 0;
+        let dragStartTop = 0;
+        let dragStartRect = null; // 记录起点 logBox 视觉尺寸（含 resize 后的实际尺寸）
         let dragThrottleTimer = null;
 
         titleBar.addEventListener('mousedown', dragStart);
@@ -755,13 +1062,16 @@
         document.addEventListener('mouseup', dragEnd);
 
         function dragStart(e) {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-
             if (e.target === titleBar || titleBar.contains(e.target)) {
                 isDragging = true;
-                // 启用硬件加速
-                logBox.style.willChange = 'transform';
+                logBox.style.willChange = 'left, top';
+                dragStartMouseX = e.clientX;
+                dragStartMouseY = e.clientY;
+                // 当前 left/top（parseFloat 解析 style）
+                dragStartLeft = parseFloat(logBox.style.left) || 0;
+                dragStartTop = parseFloat(logBox.style.top) || 0;
+                // 记录起点视觉尺寸，用于本周期边界夹紧（resize:both 下尺寸会变）
+                dragStartRect = logBox.getBoundingClientRect();
             }
         }
 
@@ -772,30 +1082,50 @@
 
                 dragThrottleTimer = requestAnimationFrame(() => {
                     e.preventDefault();
-                    currentX = e.clientX - initialX;
-                    currentY = e.clientY - initialY;
+                    const deltaX = e.clientX - dragStartMouseX;
+                    const deltaY = e.clientY - dragStartMouseY;
 
-                    xOffset = currentX;
-                    yOffset = currentY;
+                    // 用 logBox 起点尺寸做夹紧，保证大面板完整可见在视口内
+                    const w = dragStartRect ? dragStartRect.width : LOG_BOX_DEFAULT_W;
+                    const h = dragStartRect ? dragStartRect.height : LOG_BOX_DEFAULT_H;
+                    const clamped = clampPos(dragStartLeft + deltaX, dragStartTop + deltaY, w, h);
 
-                    // 使用transform3d启用硬件加速
-                    logBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                    // logBox 直接写入 left/top（拖拽过程禁止反向调 applyPosToLogBox，否则会按锚角重新贴位造成跳动）
+                    logBox.style.right = '';
+                    logBox.style.bottom = '';
+                    logBox.style.transform = '';
+                    logBox.style.left = clamped.left + 'px';
+                    logBox.style.top = clamped.top + 'px';
+
+                    // mini 跟到 logBox 左上角同位置（关闭后 mini 即出现在此）
+                    // 注意：mini 位置即"持久化真源"，下次展开会用此位置重算 logBox 锚角
+                    applyPosToMini(clamped.left, clamped.top);
+
                     dragThrottleTimer = null;
                 });
             }
         }
 
         function dragEnd(e) {
-            initialX = currentX;
-            initialY = currentY;
             isDragging = false;
-            // 清理节流定时器
             if (dragThrottleTimer) {
                 cancelAnimationFrame(dragThrottleTimer);
                 dragThrottleTimer = null;
             }
-            // 禁用硬件加速以节省资源
             logBox.style.willChange = 'auto';
+            if (dragStartRect) {
+                // 持久化当前位置（一次拖拽仅一次写入）
+                persistPos(parseFloat(logBox.style.left) || 0, parseFloat(logBox.style.top) || 0);
+            }
+            dragStartRect = null;
+        }
+
+        // 按 logBoxCollapsed 决定初始展示形态：折叠态则显示 mini、隐藏 logBox
+        // 命中持久化场景：用户上次关闭时折叠，刷新页面应保持 mini 形态
+        if (sensitiveWordsConfig.logBoxCollapsed) {
+            logBox.style.display = 'none';
+            logBox.setAttribute('data-closed', 'true');
+            miniBtn.style.display = 'flex';
         }
 
         return logBox;
@@ -806,20 +1136,26 @@
         enableCheckbox: null,
         caseCheckbox: null,
         fuzzyCheckbox: null,
-        showLogBoxCheckbox: null,
+        logBoxModeSelect: null,
         segmentationCheckbox: null,
         capacityInput: null,
         exportFormatSelect: null,
+        showLoadMsgCheckbox: null,
+        slimDanmuCheckbox: null,
+        allowOverlapCheckbox: null,
 
         // 初始化配置选项UI
-        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect) {
+        init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox, allowOverlapCheckbox) {
             this.enableCheckbox = enableCheckbox;
             this.caseCheckbox = caseCheckbox;
             this.fuzzyCheckbox = fuzzyCheckbox;
-            this.showLogBoxCheckbox = showLogBoxCheckbox;
+            this.logBoxModeSelect = logBoxModeSelect;
             this.segmentationCheckbox = segmentationCheckbox;
             this.capacityInput = capacityInput;
             this.exportFormatSelect = exportFormatSelect;
+            this.showLoadMsgCheckbox = showLoadMsgCheckbox;
+            this.slimDanmuCheckbox = slimDanmuCheckbox;
+            this.allowOverlapCheckbox = allowOverlapCheckbox;
         },
 
         // 重置配置选项UI到默认状态
@@ -827,10 +1163,13 @@
             if (this.enableCheckbox) this.enableCheckbox.checked = sensitiveWordsConfig.defaultConfig.enabled;
             if (this.caseCheckbox) this.caseCheckbox.checked = sensitiveWordsConfig.defaultConfig.caseSensitive;
             if (this.fuzzyCheckbox) this.fuzzyCheckbox.checked = sensitiveWordsConfig.defaultConfig.fuzzyMatch;
-            if (this.showLogBoxCheckbox) this.showLogBoxCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+            if (this.logBoxModeSelect) this.logBoxModeSelect.value = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
             if (this.segmentationCheckbox) this.segmentationCheckbox.checked = sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
             if (this.capacityInput) this.capacityInput.value = sensitiveWordsConfig.defaultConfig.logBoxCapacity;
             if (this.exportFormatSelect) this.exportFormatSelect.value = sensitiveWordsConfig.defaultConfig.exportFormat;
+            if (this.showLoadMsgCheckbox) this.showLoadMsgCheckbox.checked = sensitiveWordsConfig.defaultConfig.showLoadMsg;
+            if (this.slimDanmuCheckbox) this.slimDanmuCheckbox.checked = sensitiveWordsConfig.defaultConfig.slimDanmu;
+            if (this.allowOverlapCheckbox) this.allowOverlapCheckbox.checked = sensitiveWordsConfig.defaultConfig.allowDanmuOverlap;
         }
     };
 
@@ -839,7 +1178,9 @@
         // 检查是否已经存在管理界面
         let managerModal = document.getElementById('sensitive-word-manager');
         if (managerModal) {
-            managerModal.style.display = 'block';
+            // 注意：必须恢复为 'flex' 而非 'block'，否则丢失 justify-content/align-items 居中约束，
+            // panel 会从居中位置漂移到容器左上角（仅靠保留的 transform 偏移补偿，导致未拖动时无法居中）
+            managerModal.style.display = 'flex';
             // 每次打开时清空输入框
             const addInput = managerModal.querySelector('input[type="text"]');
             if (addInput) {
@@ -1177,6 +1518,7 @@
         configLabel.style.display = 'block';
         configLabel.style.marginBottom = '10px';
 
+        // 检测开关
         const enableCheckbox = document.createElement('input');
         enableCheckbox.type = 'checkbox';
         enableCheckbox.id = 'enable-sensitive-check';
@@ -1187,6 +1529,7 @@
         enableLabel.textContent = '启用敏感词检测';
         enableLabel.style.marginLeft = '5px';
 
+        // 区分大小写开关
         const caseCheckbox = document.createElement('input');
         caseCheckbox.type = 'checkbox';
         caseCheckbox.id = 'case-sensitive-check';
@@ -1197,6 +1540,7 @@
         caseLabel.textContent = '区分大小写';
         caseLabel.style.marginLeft = '5px';
 
+        // 添加模糊匹配开关
         const fuzzyCheckbox = document.createElement('input');
         fuzzyCheckbox.type = 'checkbox';
         fuzzyCheckbox.id = 'fuzzy-match-check';
@@ -1207,16 +1551,7 @@
         fuzzyLabel.textContent = '模糊匹配';
         fuzzyLabel.style.marginLeft = '5px';
 
-        const showLogBoxCheckbox = document.createElement('input');
-        showLogBoxCheckbox.type = 'checkbox';
-        showLogBoxCheckbox.id = 'show-logbox-check';
-        showLogBoxCheckbox.checked = sensitiveWordsConfig.showLogBoxByDefault;
-
-        const showLogBoxLabel = document.createElement('label');
-        showLogBoxLabel.htmlFor = 'show-logbox-check';
-        showLogBoxLabel.textContent = '页面加载立即显示记录板';
-        showLogBoxLabel.style.marginLeft = '5px';
-
+        // 添加启用分词器结果输出开关
         const segmentationCheckbox = document.createElement('input');
         segmentationCheckbox.type = 'checkbox';
         segmentationCheckbox.id = 'segmentation-test-check';
@@ -1226,6 +1561,121 @@
         segmentationLabel.htmlFor = 'segmentation-test-check';
         segmentationLabel.textContent = '启用分词器结果输出';
         segmentationLabel.style.marginLeft = '5px';
+
+        // 添加“加载完毕提示”开关
+        const showLoadMsgCheckbox = document.createElement('input');
+        showLoadMsgCheckbox.type = 'checkbox';
+        showLoadMsgCheckbox.id = 'show-load-msg-check';
+        showLoadMsgCheckbox.checked = sensitiveWordsConfig.showLoadMsg;
+        showLoadMsgCheckbox.style.marginTop = '15px';
+
+        const showLoadMsgLabel = document.createElement('label');
+        showLoadMsgLabel.htmlFor = 'show-load-msg-check';
+        showLoadMsgLabel.textContent = '脚本加载完毕显示提示弹幕';
+        showLoadMsgLabel.style.marginLeft = '5px';
+
+        const showLoadMsgDesc = document.createElement('span');
+        showLoadMsgDesc.textContent = '关闭后脚本加载成功弹幕不再显示';
+        showLoadMsgDesc.style.color = '#888';
+        showLoadMsgDesc.style.fontSize = '11px';
+        showLoadMsgDesc.style.marginLeft = '10px';
+
+        // 添加“精简弹幕”开关
+        const slimDanmuCheckbox = document.createElement('input');
+        slimDanmuCheckbox.type = 'checkbox';
+        slimDanmuCheckbox.id = 'slim-danmu-check';
+        slimDanmuCheckbox.checked = sensitiveWordsConfig.slimDanmu;
+
+        const slimDanmuLabel = document.createElement('label');
+        slimDanmuLabel.htmlFor = 'slim-danmu-check';
+        slimDanmuLabel.textContent = '精简弹幕';
+        slimDanmuLabel.style.marginLeft = '5px';
+
+        const slimDanmuDesc = document.createElement('span');
+        slimDanmuDesc.textContent = '发送成功不再显示弹幕，仅发送失败时显示';
+        slimDanmuDesc.style.color = '#888';
+        slimDanmuDesc.style.fontSize = '11px';
+        slimDanmuDesc.style.marginLeft = '10px';
+
+        // 添加“允许弹幕重叠”开关
+        const allowOverlapCheckbox = document.createElement('input');
+        allowOverlapCheckbox.type = 'checkbox';
+        allowOverlapCheckbox.id = 'allow-overlap-check';
+        allowOverlapCheckbox.checked = sensitiveWordsConfig.allowDanmuOverlap;
+
+        const allowOverlapLabel = document.createElement('label');
+        allowOverlapLabel.htmlFor = 'allow-overlap-check';
+        allowOverlapLabel.textContent = '允许弹幕重叠';
+        allowOverlapLabel.style.marginLeft = '5px';
+
+        const allowOverlapDesc = document.createElement('span');
+        allowOverlapDesc.textContent = '关闭后连发弹幕同屏仅显示一条，新弹幕替换旧弹幕';
+        allowOverlapDesc.style.color = '#888';
+        allowOverlapDesc.style.fontSize = '11px';
+        allowOverlapDesc.style.marginLeft = '10px';
+
+        // 弹幕记录板显示模式（四态下拉框）
+        const logBoxModeConfigs = [
+            { value: 'always', label: '永远展示' },
+            { value: 'never', label: '永远关闭' },
+            { value: 'onFirstDanmu', label: '首次发弹幕后显示' },
+            { value: 'onAbnormal', label: '弹幕异常时显示（被主播/系统删除）' }
+        ];
+        const showLogBoxLabel = document.createElement('label');
+        showLogBoxLabel.htmlFor = 'logbox-mode-select';
+        showLogBoxLabel.textContent = '弹幕记录板显示模式:';
+        showLogBoxLabel.style.display = 'block';
+        showLogBoxLabel.style.marginTop = '10px';
+        showLogBoxLabel.style.marginBottom = '5px';
+
+        const logBoxModeSelect = document.createElement('select');
+        logBoxModeSelect.id = 'logbox-mode-select';
+        logBoxModeSelect.value = sensitiveWordsConfig.logBoxDisplayMode;
+        logBoxModeSelect.style.cssText = `
+            width: auto;
+            min-width: 180px;
+            padding: 8px 12px;
+            border: 2px solid rgba(0, 161, 214, 0.5);
+            border-radius: 6px;
+            background: linear-gradient(135deg, #333, #2a2a2a);
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            margin-bottom: 5px;
+        `;
+        logBoxModeConfigs.forEach(cfg => {
+            const opt = document.createElement('option');
+            opt.value = cfg.value;
+            opt.textContent = cfg.label;
+            if (sensitiveWordsConfig.logBoxDisplayMode === cfg.value) {
+                opt.selected = true;
+            }
+            logBoxModeSelect.appendChild(opt);
+        });
+        logBoxModeSelect.onfocus = () => {
+            logBoxModeSelect.style.borderColor = '#00a1d6';
+            logBoxModeSelect.style.boxShadow = '0 0 0 3px rgba(0, 161, 214, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+        logBoxModeSelect.onblur = () => {
+            logBoxModeSelect.style.borderColor = 'rgba(0, 161, 214, 0.5)';
+            logBoxModeSelect.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.3)';
+        };
+
+        // 下拉选项样式：解决 Windows/某些主题下 native option 看不清的问题（与 export-format-select 同套方案）
+        const logBoxModeSelectStyle = document.createElement('style');
+        logBoxModeSelectStyle.textContent = `
+            #logbox-mode-select {
+                color: white !important;
+            }
+            #logbox-mode-select option {
+                background: #2c2c2c !important;
+                color: white !important;
+                padding: 8px 12px;
+            }
+        `;
+        document.head.appendChild(logBoxModeSelectStyle);
 
         // 添加容量配置
         const capacityLabel = document.createElement('label');
@@ -1340,6 +1790,7 @@
         exportFormatDesc.style.fontSize = '11px';
         exportFormatDesc.style.marginLeft = '10px';
 
+        // 添加检测配置
         configSection.appendChild(configLabel);
         configSection.appendChild(enableCheckbox);
         configSection.appendChild(enableLabel);
@@ -1350,11 +1801,27 @@
         configSection.appendChild(fuzzyCheckbox);
         configSection.appendChild(fuzzyLabel);
         configSection.appendChild(document.createElement('br'));
-        configSection.appendChild(showLogBoxCheckbox);
-        configSection.appendChild(showLogBoxLabel);
-        configSection.appendChild(document.createElement('br'));
         configSection.appendChild(segmentationCheckbox);
         configSection.appendChild(segmentationLabel);
+        configSection.appendChild(document.createElement('br'));
+
+        // 添加弹幕配置
+        configSection.appendChild(showLoadMsgCheckbox);
+        configSection.appendChild(showLoadMsgLabel);
+        configSection.appendChild(showLoadMsgDesc);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(slimDanmuCheckbox);
+        configSection.appendChild(slimDanmuLabel);
+        configSection.appendChild(slimDanmuDesc);
+        configSection.appendChild(document.createElement('br'));
+        configSection.appendChild(allowOverlapCheckbox);
+        configSection.appendChild(allowOverlapLabel);
+        configSection.appendChild(allowOverlapDesc);
+        configSection.appendChild(document.createElement('br'));
+
+        // 添加选择框
+        configSection.appendChild(showLogBoxLabel);
+        configSection.appendChild(logBoxModeSelect);
         configSection.appendChild(document.createElement('br'));
         configSection.appendChild(capacityLabel);
         configSection.appendChild(capacityInput);
@@ -1365,7 +1832,7 @@
         configSection.appendChild(exportFormatDesc);
 
         // 初始化配置选项UI管理器
-        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, showLogBoxCheckbox, segmentationCheckbox, capacityInput, exportFormatSelect);
+        configUI.init(enableCheckbox, caseCheckbox, fuzzyCheckbox, logBoxModeSelect, segmentationCheckbox, capacityInput, exportFormatSelect, showLoadMsgCheckbox, slimDanmuCheckbox, allowOverlapCheckbox);
 
         // 操作按钮区域
         const buttonSection = document.createElement('div');
@@ -1666,7 +2133,7 @@
                 localStorage.removeItem('danmu_sensitive_words');
 
                 // 重置敏感词配置对象到默认状态
-                resetToDefaultConfig()
+                resetToDefaultConfig();
 
                 // 重置敏感词管理器到默认状态
                 sensitiveWordManager.saveWords(sensitiveWordsConfig.words);
@@ -1688,9 +2155,15 @@
             sensitiveWordsConfig.enabled = enableCheckbox.checked;
             sensitiveWordsConfig.caseSensitive = caseCheckbox.checked;
             sensitiveWordsConfig.fuzzyMatch = fuzzyCheckbox.checked;
-            sensitiveWordsConfig.showLogBoxByDefault = showLogBoxCheckbox.checked;
+            // 读取三态下拉框选中值
+            sensitiveWordsConfig.logBoxDisplayMode = logBoxModeSelect.value || 'always';
+            // 同步派生字段，保持向后兼容
+            sensitiveWordsConfig.showLogBoxByDefault = (sensitiveWordsConfig.logBoxDisplayMode === 'always');
             sensitiveWordsConfig.enableSegmentationTest = segmentationCheckbox.checked;
             sensitiveWordsConfig.exportFormat = exportFormatSelect.value;
+            sensitiveWordsConfig.showLoadMsg = showLoadMsgCheckbox.checked;
+            sensitiveWordsConfig.slimDanmu = slimDanmuCheckbox.checked;
+            sensitiveWordsConfig.allowDanmuOverlap = allowOverlapCheckbox.checked;
 
             // 验证并设置容量值
             const capacityValue = parseInt(capacityInput.value);
@@ -1709,15 +2182,22 @@
                 fuzzyMatch: sensitiveWordsConfig.fuzzyMatch,
                 enableSegmentationTest: sensitiveWordsConfig.enableSegmentationTest,
                 showLogBoxByDefault: sensitiveWordsConfig.showLogBoxByDefault,
+                logBoxDisplayMode: sensitiveWordsConfig.logBoxDisplayMode,
+                logBoxPos: sensitiveWordsConfig.logBoxPos,
+                logBoxCollapsed: sensitiveWordsConfig.logBoxCollapsed,
                 logBoxCapacity: sensitiveWordsConfig.logBoxCapacity,
-                exportFormat: sensitiveWordsConfig.exportFormat
+                exportFormat: sensitiveWordsConfig.exportFormat,
+                showLoadMsg: sensitiveWordsConfig.showLoadMsg,
+                slimDanmu: sensitiveWordsConfig.slimDanmu,
+                allowDanmuOverlap: sensitiveWordsConfig.allowDanmuOverlap
             };
             localStorage.setItem('danmu_sensitive_words', JSON.stringify(config));
 
-            // 如果弹幕记录板显示配置发生变化，需要重新创建或隐藏弹幕记录板
+            // 根据显示模式同步记录板可见性
             const logBox = document.getElementById('danmu-log-box');
-            if (sensitiveWordsConfig.showLogBoxByDefault) {
-                // 如果启用默认显示，确保弹幕记录板存在并显示，只有在真实直播间页面（有 live-player）才创建
+            const mode = sensitiveWordsConfig.logBoxDisplayMode;
+            if (mode === 'always') {
+                // 永远展示：不存在则创建，存在则显示并复活
                 if (!logBox) {
                     const livePlayerDiv = document.getElementById('live-player');
                     if (livePlayerDiv) {
@@ -1730,7 +2210,7 @@
                     logBox.removeAttribute('data-closed');
                 }
             } else {
-                // 如果禁用默认显示，隐藏弹幕记录板
+                // 'never' / 'onFirstDanmu' / 'onAbnormal'：隐藏记录板（保留 DOM 不销毁）
                 if (logBox) {
                     logBox.style.display = 'none';
                     logBox.setAttribute('data-closed', 'true');
@@ -2494,6 +2974,24 @@
         // 检查全局开关
         if (!globalConfig.advancedFeaturesEnabled) return;
 
+        // 模式判定：'never' 不记录任何数据，直接 return，避免触发 domCache.getLogBox() 的无条件创建
+        const mode = sensitiveWordsConfig.logBoxDisplayMode;
+        if (mode === 'never') return;
+
+        // 模式 'onAbnormal'：仅异常弹幕（被主播/系统删除）触发记录板创建与显示
+        // - 异常弹幕（system/user）：与 onFirstDanmu 同行为，触发创建+复活
+        // - 正常弹幕（normal）：若记录板尚未创建则直接 return，已创建则正常记录
+        if (mode === 'onAbnormal') {
+            const isAbnormal = (type === 'system' || type === 'user');
+            const existingBox = document.getElementById('danmu-log-box');
+            if (!isAbnormal && !existingBox) {
+                return;
+            }
+        }
+
+        // 'always' / 'onFirstDanmu' / 'onAbnormal 触发条件成立时' 走正常逻辑：
+        // - domCache.getLogBox() 在首次调用时创建记录板（满足 'onFirstDanmu' 首次发弹幕 / 'onAbnormal' 首次异常 触发）
+        // - 下面的复活逻辑对 'always' 已关闭场景生效，对首次创建后无 data-closed 自然跳过
         const logBox = domCache.getLogBox();
 
         // 如果记录板不存在，直接返回（可能页面未加载完成）
@@ -2502,9 +3000,29 @@
         }
 
         if (logBox.getAttribute('data-closed') === 'true') {
-            // 如果弹幕框被关闭，重新显示
+            // 如果弹幕框被关闭（折叠为迷你按钮），重新显示并同步隐藏迷你入口
+            // 重算锚角位置（应对 mini 位置变化或窗口尺寸变化）
+            const mini = document.getElementById('danmu-log-mini');
+            if (mini) {
+                const miniLeft = parseFloat(mini.style.left) || 0;
+                const miniTop = parseFloat(mini.style.top) || 0;
+                if (typeof logBox._applyPosByMini === 'function') {
+                    logBox._applyPosByMini(miniLeft, miniTop);
+                }
+                mini.style.display = 'none';
+            }
             logBox.style.display = 'block';
             logBox.removeAttribute('data-closed');
+            // 复活即"自动展开"，同步持久化展开态
+            if (sensitiveWordsConfig.logBoxCollapsed) {
+                try {
+                    const saved = localStorage.getItem('danmu_sensitive_words');
+                    const cfg = saved ? JSON.parse(saved) : {};
+                    cfg.logBoxCollapsed = false;
+                    localStorage.setItem('danmu_sensitive_words', JSON.stringify(cfg));
+                } catch (e) {}
+                sensitiveWordsConfig.logBoxCollapsed = false;
+            }
         }
 
         const contentArea = domCache.getContentArea();
@@ -2582,12 +3100,11 @@
         }
     }
 
-
     // 从本地存储初始化敏感词配置
     function initSensitiveWordsConfig() {
         // 如果高级功能关闭，直接返回，不读取配置
         if (!globalConfig.advancedFeaturesEnabled) {
-            consoleStyle.info('检测到高级功能关闭，使用基础检测模式')
+            consoleStyle.info('检测到高级功能关闭，使用基础检测模式');
             return;
         }
 
@@ -2599,9 +3116,29 @@
                 sensitiveWordsConfig.caseSensitive = config.caseSensitive !== undefined ? config.caseSensitive : sensitiveWordsConfig.defaultConfig.caseSensitive;
                 sensitiveWordsConfig.fuzzyMatch = config.fuzzyMatch !== undefined ? config.fuzzyMatch : sensitiveWordsConfig.defaultConfig.fuzzyMatch;
                 sensitiveWordsConfig.enableSegmentationTest = config.enableSegmentationTest !== undefined ? config.enableSegmentationTest : sensitiveWordsConfig.defaultConfig.enableSegmentationTest;
-                sensitiveWordsConfig.showLogBoxByDefault = config.showLogBoxByDefault !== undefined ? config.showLogBoxByDefault : sensitiveWordsConfig.defaultConfig.showLogBoxByDefault;
+                // 三态枚举模式迁移：优先读新字段，否则按旧布尔字段映射
+                if (config.logBoxDisplayMode !== undefined) {
+                    sensitiveWordsConfig.logBoxDisplayMode = config.logBoxDisplayMode;
+                } else if (config.showLogBoxByDefault !== undefined) {
+                    sensitiveWordsConfig.logBoxDisplayMode = config.showLogBoxByDefault ? 'always' : 'onFirstDanmu';
+                } else {
+                    sensitiveWordsConfig.logBoxDisplayMode = sensitiveWordsConfig.defaultConfig.logBoxDisplayMode;
+                }
+                // 同步派生字段，保持向后兼容
+                sensitiveWordsConfig.showLogBoxByDefault = (sensitiveWordsConfig.logBoxDisplayMode === 'always');
+                // 读取记录板/迷你按钮共享位置：必须是合法对象才采用，否则保持 null 走默认位置
+                if (config.logBoxPos && typeof config.logBoxPos.left === 'number' && typeof config.logBoxPos.top === 'number') {
+                    sensitiveWordsConfig.logBoxPos = { left: config.logBoxPos.left, top: config.logBoxPos.top };
+                } else {
+                    sensitiveWordsConfig.logBoxPos = null;
+                }
+                // 读取折叠态：布尔值才采用，否则保持默认 false（展开）
+                sensitiveWordsConfig.logBoxCollapsed = (typeof config.logBoxCollapsed === 'boolean') ? config.logBoxCollapsed : sensitiveWordsConfig.defaultConfig.logBoxCollapsed;
                 sensitiveWordsConfig.logBoxCapacity = config.logBoxCapacity !== undefined ? config.logBoxCapacity : sensitiveWordsConfig.defaultConfig.logBoxCapacity;
                 sensitiveWordsConfig.exportFormat = config.exportFormat !== undefined ? config.exportFormat : sensitiveWordsConfig.defaultConfig.exportFormat;
+                sensitiveWordsConfig.showLoadMsg = config.showLoadMsg !== undefined ? config.showLoadMsg : sensitiveWordsConfig.defaultConfig.showLoadMsg;
+                sensitiveWordsConfig.slimDanmu = config.slimDanmu !== undefined ? config.slimDanmu : sensitiveWordsConfig.defaultConfig.slimDanmu;
+                sensitiveWordsConfig.allowDanmuOverlap = config.allowDanmuOverlap !== undefined ? config.allowDanmuOverlap : sensitiveWordsConfig.defaultConfig.allowDanmuOverlap;
                 if (config.words && Array.isArray(config.words)) {
                     sensitiveWordsConfig.words = config.words;
                 }
@@ -2612,15 +3149,15 @@
             }
         } else {
             // 如果没有保存的配置，确保使用默认值
-            resetToDefaultConfig()
+            resetToDefaultConfig();
         }
     }
 
     // 初始化配置
     initSensitiveWordsConfig();
 
-    // 根据全局开关和配置决定是否默认显示弹幕记录板
-    if (globalConfig.advancedFeaturesEnabled && sensitiveWordsConfig.showLogBoxByDefault) {
+    // 根据全局开关和配置决定是否默认显示弹幕记录板（仅 'always' 模式在页面加载时创建）
+    if (globalConfig.advancedFeaturesEnabled && sensitiveWordsConfig.logBoxDisplayMode === 'always') {
         // 延迟创建弹幕记录板，确保页面加载完成
         // 使用 DOMContentLoaded 或延迟执行，确保页面元素已加载
         const initLogBox = () => {
@@ -2662,9 +3199,9 @@
     if (self.unsafeWindow) {
         consoleStyle.success(`弹幕反诈脚本已加载 | ${globalConfig.successLoadMsg}`);
         // 只在真实直播间页面显示加载成功消息
-        if (isInValidLiveRoom()) {
+        if (isInValidLiveRoom() && sensitiveWordsConfig.showLoadMsg) {
             setTimeout(() => {
-               showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
+                showFloatingMessage(globalConfig.successLoadMsg, globalConfig.successColor);
             }, globalConfig.msgTime);
         }
         windowCtx = self.unsafeWindow;
@@ -2673,7 +3210,7 @@
         // 只在真实直播间页面显示错误消息
         if (isInValidLiveRoom()) {
             setTimeout(() => {
-               showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
+                showFloatingMessage(globalConfig.errorMsg, globalConfig.errorColor);
             }, globalConfig.msgTime);
         }
     }
@@ -2710,7 +3247,14 @@
     }
 
     function showFloatingMessage(message, color) {
+        // 关闭弹幕重叠时：先移除已在飘屏的同类元素，保证同屏仅一条
+        if (!sensitiveWordsConfig.allowDanmuOverlap) {
+            const existing = document.querySelectorAll('.danmu-float-active');
+            existing.forEach(el => el.remove());
+        }
+
         const div = document.createElement('div');
+        div.className = 'danmu-float-active';
         div.textContent = message;
         div.style.cssText = `
             position: fixed;
@@ -2798,7 +3342,7 @@
 
             // 处理响应数据
             if (data.code === 0 && data.msg === "f") {
-                for(let i = 0; i < globalConfig.exp; i++){
+                for (let i = 0; i < globalConfig.exp; i++) {
                     showFloatingMessage(globalConfig.banSystemMsg, globalConfig.banColorSystem);
                 }
                 data.code = -101;
@@ -2807,7 +3351,7 @@
                 delete data.msg;
                 delete data.data;
             } else if (data.code === 0 && data.msg === "k") {
-                for(let i = 0; i < globalConfig.exp; i++){
+                for (let i = 0; i < globalConfig.exp; i++) {
                     showFloatingMessage(globalConfig.banUserMsg, globalConfig.banColorUser);
                 }
                 data.code = -101;
@@ -2817,7 +3361,7 @@
                 delete data.data;
             } else {
                 console.log("恭喜，您的弹幕正常显示！");
-                if(globalConfig.successSend === true){
+                if (globalConfig.successSend === true && !sensitiveWordsConfig.slimDanmu) {
                     showFloatingMessage(globalConfig.successMsg, globalConfig.successColor);
                 }
             }
@@ -2880,4 +3424,15 @@
             return originFetchBLDMAF(...arg);
         }
     };
+
+    // ============================================================
+    // 油猴菜单项：提供「永久关闭」后的恢复入口
+    // 通过 GM_registerMenuCommand 注册到油猴菜单，无论记录板是否可见均可调用。
+    // ============================================================
+    if (typeof GM_registerMenuCommand === 'function') {
+        // 菜单项 1：直接打开管理面板（用户可在面板内手动改显示模式）
+        GM_registerMenuCommand('打开弹幕管理面板', () => {
+            showSensitiveWordManager();
+        });
+    }
 })();
